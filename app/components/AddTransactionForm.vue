@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { CATEGORY_ICONS } from '~/utils/categories';
+import { CATEGORIES } from '~/utils/categories';
 import type { Category } from '~/types';
 import { CURRENCY_OPTIONS } from '~/composables/useCurrency';
 
@@ -85,25 +85,10 @@ const emit = defineEmits<{
 const { addTransaction, categorizeTransaction } = useTransactions();
 const { currency } = useCurrency();
 
-const categories: Category[] = [
-  'groceries',
-  'dining',
-  'transport',
-  'entertainment',
-  'utilities',
-  'shopping',
-  'health',
-  'income',
-  'transfer',
-  'other',
-];
-
 const categoryOptions = computed(() =>
-  categories.map((cat) => ({
-    label: `${CATEGORY_ICONS[cat]} ${
-      cat.charAt(0).toUpperCase() + cat.slice(1)
-    }`,
-    value: cat,
+  Object.entries(CATEGORIES).map(([key, { icon }]) => ({
+    label: `${icon} ${key.charAt(0).toUpperCase() + key.slice(1)}`,
+    value: key,
   }))
 );
 
@@ -141,7 +126,7 @@ const handleSubmit = () => {
     description: form.description,
     amount,
     category: form.category,
-    date: new Date(form.date),
+    date: form.date ? new Date(form.date) : new Date(),
     merchant: form.description.split(' ').slice(0, 3).join(' '),
   });
 

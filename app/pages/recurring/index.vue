@@ -92,7 +92,7 @@
           class="py-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors px-2 -mx-2"
           @click="showTransactions(payment)"
         >
-          <div class="text-3xl">{{ CATEGORY_ICONS[payment.category] }}</div>
+          <div class="text-3xl">{{ CATEGORIES[payment.category]?.icon }}</div>
           <div class="flex-1">
             <div class="flex items-center gap-2">
               <p class="font-medium text-black dark:text-white">
@@ -167,10 +167,10 @@
           :key="category.name"
           class="flex items-center gap-3"
         >
-          <span class="text-2xl">{{ CATEGORY_ICONS[category.name] }}</span>
+          <span class="text-2xl">{{ CATEGORIES[category.name].icon }}</span>
           <div class="flex-1">
             <div class="flex justify-between text-sm">
-              <p class="capitalize">{{ category.name }}</p>
+              <p class="capitalize dark:text-white">{{ category.name }}</p>
               <strong class="text-rose-200">{{
                 formatMoney(category.total)
               }}</strong>
@@ -180,7 +180,7 @@
                 class="h-full rounded-full"
                 :style="{
                   width: `${category.share}%`,
-                  backgroundColor: CATEGORY_COLORS[category.name],
+                  backgroundColor: CATEGORIES[category.name].color,
                 }"
               ></div>
             </div>
@@ -204,7 +204,7 @@ import {
   isPast,
   isToday,
 } from 'date-fns';
-import { CATEGORY_ICONS, CATEGORY_COLORS } from '~/utils/categories';
+import { CATEGORIES } from '~/utils/categories';
 import type { RecurringPayment, Category } from '~/types';
 
 const { detectRecurringPayments, refreshRecurringPatterns } = useTransactions();
@@ -315,17 +315,21 @@ const getStatus = (payment: RecurringPayment) => {
 
 const categoryBreakdown = computed(() => {
   const totals: Record<Category, number> = {} as Record<Category, number>;
-  recurringPayments.value.forEach((payment) => {
-    const amount = Math.abs(normalizeRecurring(payment));
-    totals[payment.category] = (totals[payment.category] || 0) + amount;
-  });
+  recurringPayments.value
+    .filter((p) => p.amount < 0)
+    .forEach((payment) => {
+      const amount = Math.abs(normalizeRecurring(payment));
+      totals[payment.category] = (totals[payment.category] || 0) + amount;
+    });
 
   const total = Object.values(totals).reduce((sum, amount) => sum + amount, 0);
-  return Object.entries(totals).map(([name, amount]) => ({
-    name: name as Category,
-    total: amount,
-    share: total ? (amount / total) * 100 : 0,
-  }));
+  return Object.entries(totals)
+    .map(([name, amount]) => ({
+      name: name as Category,
+      total: amount,
+      share: total ? (amount / total) * 100 : 0,
+    }))
+    .toSorted((a, b) => b.total - a.total);
 });
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>

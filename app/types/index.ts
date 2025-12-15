@@ -1,13 +1,15 @@
 export type Category =
+  | 'housing'
+  | 'livelihood'
   | 'groceries'
-  | 'dining'
-  | 'transport'
-  | 'entertainment'
-  | 'utilities'
+  | 'leisure'
   | 'shopping'
+  | 'transportation'
+  | 'savings'
+  | 'travel'
   | 'health'
+  | 'education'
   | 'income'
-  | 'transfer'
   | 'other';
 
 export interface Transaction {

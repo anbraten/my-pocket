@@ -136,7 +136,7 @@
           class="p-4 flex items-start gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
         >
           <div class="text-3xl mt-1">
-            {{ CATEGORY_ICONS[transaction.category] }}
+            {{ CATEGORIES[transaction.category]?.icon }}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
@@ -241,8 +241,7 @@
 
 <script setup lang="ts">
 import { format } from 'date-fns';
-import { CATEGORY_ICONS } from '~/utils/categories';
-import { getMonthlyBudget } from '~/utils/budgets';
+import { CATEGORIES } from '~/utils/categories';
 import type { Category } from '~/types';
 
 const showAddTransaction = ref(false);
@@ -333,18 +332,7 @@ const isRecurring = (transaction: (typeof transactions.value)[0]) => {
   });
 };
 
-const categories: Category[] = [
-  'groceries',
-  'dining',
-  'transport',
-  'entertainment',
-  'utilities',
-  'shopping',
-  'health',
-  'income',
-  'transfer',
-  'other',
-];
+const categories = Object.keys(CATEGORIES);
 
 const categoryOptions = computed(() =>
   categories.map((cat) => ({

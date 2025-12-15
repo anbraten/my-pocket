@@ -167,7 +167,9 @@
             class="flex items-center justify-between py-2"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <span class="text-2xl">{{ CATEGORY_ICONS[item.category] }}</span>
+              <span class="text-2xl">{{
+                CATEGORIES[item.category]?.icon
+              }}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <p
@@ -228,7 +230,7 @@
           >
             <div class="flex items-center gap-2 min-w-0">
               <span class="text-lg">{{
-                CATEGORY_ICONS[payment.category]
+                CATEGORIES[payment.category]?.icon
               }}</span>
               <span class="text-sm truncate text-black dark:text-white">
                 {{ payment.merchant }}
@@ -313,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { CATEGORY_ICONS } from '~/utils/categories';
+import { CATEGORIES } from '~/utils/categories';
 import {
   detectAnomalies,
   analyzeSpendingTrends,

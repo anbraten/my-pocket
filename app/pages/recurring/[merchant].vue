@@ -81,7 +81,7 @@
             Category
           </p>
           <p class="text-lg font-semibold capitalize">
-            {{ CATEGORY_ICONS[recurringPayment.category] }}
+            {{ CATEGORIES[recurringPayment.category]?.icon }}
             {{ recurringPayment.category }}
           </p>
         </div>
@@ -117,7 +117,9 @@
           :key="transaction.id"
           class="py-3 px-3 flex items-center gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors"
         >
-          <div class="text-2xl">{{ CATEGORY_ICONS[transaction.category] }}</div>
+          <div class="text-2xl">
+            {{ CATEGORIES[transaction.category]?.icon }}
+          </div>
           <div class="flex-1">
             <p
               class="font-medium text-black dark:text-white whitespace-pre-wrap"
@@ -154,7 +156,7 @@
 
 <script setup lang="ts">
 import { format, formatDistanceToNow } from 'date-fns';
-import { CATEGORY_ICONS } from '~/utils/categories';
+import { CATEGORIES } from '~/utils/categories';
 import type { Transaction, RecurringPayment } from '~/types';
 
 const route = useRoute();
