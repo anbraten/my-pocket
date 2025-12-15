@@ -1,13 +1,14 @@
 import type { Category } from '~/types';
 
-export const MONTHLY_BUDGET = 2500;
-
-export const CATEGORY_BUDGETS: Partial<Record<Category, number>> = {
-  groceries: 450,
-  dining: 250,
-  transport: 180,
-  entertainment: 200,
-  utilities: 320,
-  shopping: 280,
-  health: 160,
+/**
+ * Get monthly budget based on income (80% for expenses, 20% for savings)
+ * Prioritizes recurring income, falls back to actual monthly income
+ */
+export const getMonthlyBudget = (
+  monthlyIncome: number,
+  recurringIncome?: number
+) => {
+  const baseIncome =
+    recurringIncome && recurringIncome > 0 ? recurringIncome : monthlyIncome;
+  return baseIncome * 0.8;
 };

@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subtle';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 const props = withDefaults(
@@ -26,26 +26,22 @@ const props = withDefaults(
 );
 
 const variantClasses: Record<Variant, string> = {
-  primary:
-    'bg-[var(--accent)] text-[var(--accent-fg)] border border-transparent hover:bg-[var(--accent-strong)]',
+  primary: 'bg-emerald-500 text-white hover:bg-emerald-600',
   secondary:
-    'bg-[var(--surface-card)] border border-[var(--surface-border-strong)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]',
+    'bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-black dark:text-white hover:bg-neutral-300 dark:hover:bg-neutral-700',
   ghost:
-    'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)]',
-  danger:
-    'bg-rose-600/90 border border-rose-500/50 text-white hover:bg-rose-600',
-  subtle:
-    'bg-[var(--surface-muted)] border border-transparent text-[var(--text-primary)] hover:border-[var(--surface-border-strong)]',
+    'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800',
+  danger: 'bg-red-600 text-white hover:bg-red-700',
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'text-xs px-3 py-2 rounded-xl',
-  md: 'text-sm px-4 py-3 rounded-2xl',
-  lg: 'text-base px-5 py-4 rounded-3xl',
+  sm: 'text-xs px-3 py-1.5 rounded-md',
+  md: 'text-sm px-4 py-2 rounded-md',
+  lg: 'text-base px-6 py-3 rounded-lg',
 };
 
 const buttonClasses = computed(() => [
-  'font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-0 active:translate-y-0.5 transform',
+  'font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0',
   variantClasses[props.variant] ?? variantClasses.primary,
   sizeClasses[props.size] ?? sizeClasses.md,
   props.block ? 'w-full' : '',

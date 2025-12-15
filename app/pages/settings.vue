@@ -2,26 +2,32 @@
   <div class="space-y-6">
     <UiCard class="space-y-6">
       <header>
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">
+        <p
+          class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
+        >
           Preferences
         </p>
-        <h1 class="text-2xl font-semibold text-white">Control panel</h1>
-        <p class="text-sm text-slate-500">
+        <h1 class="text-2xl font-semibold text-black dark:text-white">
+          Control panel
+        </h1>
+        <p class="text-sm text-neutral-600 dark:text-neutral-400">
           Pick your currency and keep everything on-device.
         </p>
       </header>
       <div class="grid gap-4 md:grid-cols-2">
         <div class="space-y-2">
-          <label class="text-xs uppercase tracking-[0.3em] text-slate-400"
+          <label
+            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
             >Currency</label
           >
-          <UiSelect v-model="selectedCurrency" :options="currencySelects" />
-          <p class="text-xs text-slate-500 mt-2">
-            Applies to dashboards, subscriptions, and CSV exports.
+          <UiSelect v-model="currency" :options="currencySelects" />
+          <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-2">
+            Applies to dashboards, recurring transactions, and CSV exports.
           </p>
         </div>
         <div class="space-y-2">
-          <label class="text-xs uppercase tracking-[0.3em] text-slate-400"
+          <label
+            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
             >Appearance</label
           >
           <button
@@ -29,20 +35,22 @@
             role="switch"
             :aria-checked="!isDark"
             @click="toggleTheme"
-            class="flex items-center justify-between rounded-2xl px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 bg-[var(--surface-card)] border border-[var(--surface-border)] text-[var(--text-primary)] theme-shadow"
+            class="flex items-center justify-between rounded-lg px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
           >
             <div>
-              <p class="text-sm font-semibold flex items-center gap-2">
+              <p
+                class="text-sm font-semibold flex items-center gap-2 text-black dark:text-white"
+              >
                 <span>{{ isDark ? '🌙' : '☀️' }}</span>
                 <span>{{ appearanceTitle }}</span>
               </p>
-              <p class="text-xs text-[var(--text-muted)]">
+              <p class="text-xs text-neutral-600 dark:text-neutral-400">
                 {{ appearanceCopy }}
               </p>
             </div>
             <span
               class="relative inline-flex h-6 w-11 items-center rounded-full transition"
-              :class="isDark ? 'bg-slate-600' : 'bg-emerald-400/80'"
+              :class="isDark ? 'bg-neutral-600' : 'bg-emerald-500'"
             >
               <span
                 class="inline-block h-5 w-5 rounded-full bg-white shadow transition"
@@ -50,40 +58,56 @@
               ></span>
             </span>
           </button>
-          <p class="text-xs text-slate-500 mt-2">
+          <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-2">
             Switch surface colors without leaving the page.
           </p>
         </div>
-        <div
-          class="rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-slate-300 space-y-2"
+      </div>
+      <div
+        class="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-4 text-sm space-y-2"
+      >
+        <p
+          class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
         >
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Vault</p>
-          <p class="text-2xl font-semibold text-white">
-            {{ formatMoney(totalExpenses) }}
-          </p>
-          <p class="text-xs text-slate-500">Lifetime spend tracked</p>
-          <p class="text-sm text-emerald-300">
-            {{ formatSignedMoney(totalIncome) }} collected
-          </p>
-          <p class="text-xs text-slate-500">
-            Across {{ transactions.length }} records
-          </p>
-        </div>
+          Vault
+        </p>
+        <p class="text-2xl font-semibold text-black dark:text-white">
+          {{ formatMoney(totalExpenses) }}
+        </p>
+        <p class="text-xs text-neutral-600 dark:text-neutral-400">
+          Lifetime spend tracked
+        </p>
+        <p class="text-sm text-emerald-600 dark:text-emerald-400">
+          {{ formatSignedMoney(totalIncome) }} collected
+        </p>
+        <p class="text-xs text-neutral-600 dark:text-neutral-400">
+          Across {{ transactions.length }} records
+        </p>
       </div>
     </UiCard>
 
     <UiCard class="space-y-4">
       <header>
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Import</p>
-        <h2 class="text-xl font-semibold text-white">Drop a CSV</h2>
-        <p class="text-sm text-slate-500">Structured, local-only uploads.</p>
+        <p
+          class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
+        >
+          Import
+        </p>
+        <h2 class="text-xl font-semibold text-black dark:text-white">
+          Drop a CSV
+        </h2>
+        <p class="text-sm text-neutral-600 dark:text-neutral-400">
+          Structured, local-only uploads.
+        </p>
       </header>
       <div class="space-y-2">
-        <label class="text-xs uppercase tracking-[0.3em] text-slate-400">
+        <label
+          class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
+        >
           Bank Format
         </label>
-        <UiSelect v-model="selectedBankFormat" :options="bankFormatOptions" />
-        <p class="text-xs text-slate-500 mt-2">
+        <UiSelect v-model="selectedParserNamer" :options="bankFormatOptions" />
+        <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-2">
           Select your bank's CSV format for accurate parsing.
         </p>
       </div>
@@ -91,9 +115,12 @@
         type="file"
         accept=".csv"
         @change="handleFileUpload"
-        class="block w-full text-sm text-white bg-white/5 border border-white/10 rounded-2xl px-4 py-3 cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-400"
+        class="block w-full text-sm text-black dark:text-white bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600"
       />
-      <p v-if="importing" class="text-xs text-slate-400">
+      <p
+        v-if="importing"
+        class="text-xs text-neutral-600 dark:text-neutral-400"
+      >
         Processing {{ importedCount }} transactions...
       </p>
       <div
@@ -113,11 +140,15 @@
     <section class="grid gap-4 md:grid-cols-2">
       <UiCard class="space-y-4">
         <header>
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">
+          <p
+            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
+          >
             Export
           </p>
-          <h2 class="text-xl font-semibold text-white">Download snapshot</h2>
-          <p class="text-xs text-slate-500">
+          <h2 class="text-xl font-semibold text-black dark:text-white">
+            Download snapshot
+          </h2>
+          <p class="text-xs text-neutral-600 dark:text-neutral-400">
             Everything stays in your browser.
           </p>
         </header>
@@ -179,12 +210,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  parseCSV,
-  csvToTransactions,
-  BANK_PARSERS,
-  type BankFormat,
-} from '~/utils/csvParser';
+import { parseCSV, csvToTransactions, BANK_PARSERS } from '~/utils/csvParser';
 
 const {
   transactions,
@@ -195,10 +221,9 @@ const {
   categorizeTransaction,
 } = useTransactions();
 
-const { currency, setCurrency, currencyOptions, formatCurrency } =
-  useCurrency();
+const { currency, currencyOptions, formatCurrency } = useCurrency();
 
-const { isDark, toggleTheme } = useTheme();
+const { toggleTheme, isDark } = useTheme();
 
 const currencySelects = computed(() =>
   currencyOptions.map((option) => ({
@@ -206,11 +231,6 @@ const currencySelects = computed(() =>
     value: option.value,
   }))
 );
-
-const selectedCurrency = computed<'USD' | 'EUR'>({
-  get: () => currency.value,
-  set: (value) => setCurrency(value),
-});
 
 const appearanceTitle = computed(() =>
   isDark.value ? 'Dark mode' : 'Light mode'
@@ -221,7 +241,7 @@ const appearanceCopy = computed(() =>
     : 'Bright contrast for daylight work.'
 );
 
-const selectedBankFormat = ref<BankFormat>('generic');
+const selectedParserNamer = ref('generic');
 
 const bankFormatOptions = computed(() =>
   Object.entries(BANK_PARSERS).map(([key, parser]) => ({
@@ -267,16 +287,17 @@ const handleFileUpload = async (event: Event) => {
   importedCount.value = 0;
 
   try {
-    const format = selectedBankFormat.value;
-    const parser = BANK_PARSERS[format];
+    const parserName = selectedParserNamer.value;
 
-    const rows = await parseCSV(file, format);
+    const rows = await parseCSV(file, parserName);
 
     const newTransactions = csvToTransactions(
       rows,
-      parser,
+      parserName,
       categorizeTransaction
     );
+
+    console.log('Parsed transactions:', { newTransactions, parserName, rows });
 
     addTransactions(newTransactions);
     importedCount.value = newTransactions.length;

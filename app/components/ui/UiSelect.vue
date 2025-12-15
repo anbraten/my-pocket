@@ -3,7 +3,7 @@
     <select
       :value="modelValue"
       @change="onChange"
-      class="w-full appearance-none bg-[var(--input-bg)] border border-[var(--surface-border)] rounded-2xl pr-10 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] focus:border-transparent transition-colors duration-200"
+      class="w-full appearance-none bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md pr-10 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
       :class="sizeClass"
       v-bind="attrs"
     >
@@ -24,7 +24,7 @@
       </template>
     </select>
     <span
-      class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+      class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-neutral-600 dark:text-neutral-400"
       >⌄</span
     >
   </div>

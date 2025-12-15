@@ -42,9 +42,18 @@ export interface RecurringPayment {
   merchant: string;
   amount: number;
   category: Category;
-  frequency: 'weekly' | 'monthly' | 'yearly';
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
   lastDate: Date;
   nextExpectedDate?: Date;
-  confidence: number;
   count: number;
+  intervals?: number[]; // days between transactions
+  confidence: number; // 0-1, confidence score
+  amountStdDev?: number; // standard deviation for amount variance
+}
+
+export interface UserSettings {
+  monthlyIncomeTarget: number;
+  savingsGoalPercent: number;
+  currency: string;
+  recurringConfidenceThreshold?: number; // minimum confidence to show recurring items (0-1)
 }

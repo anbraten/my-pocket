@@ -1,3 +1,4 @@
+import { useLocalStorage } from '@vueuse/core';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import type {
   Transaction,
@@ -6,61 +7,104 @@ import type {
   Insight,
   RecurringPayment,
 } from '~/types';
-import { CATEGORY_KEYWORDS } from '~/utils/categories';
+import {
+  categorizeTransaction,
+  normalizeDescription,
+  type LearnedMapping,
+} from '~/utils/categories';
+import { getSimilarity } from '~/utils/stringUtils';
+import {
+  generateRecurringInsights,
+  generateCategoryInsights,
+} from '~/utils/insights';
 
 export const useTransactions = () => {
-  const transactions = useState<Transaction[]>('transactions', () => []);
-
-  // Load from localStorage on mount
-  if (process.client) {
-    const stored = localStorage.getItem('my-pocket-transactions');
-    if (stored && transactions.value.length === 0) {
-      const parsed = JSON.parse(stored);
-      transactions.value = parsed.map((t: any) => ({
-        ...t,
-        date: new Date(t.date),
-      }));
+  const transactions = useLocalStorage<Transaction[]>(
+    'my-pocket:transactions',
+    [],
+    {
+      serializer: {
+        read: (v) => {
+          if (!v) return [];
+          const parsed = JSON.parse(v) as Transaction[];
+          // Convert date strings back to Date objects
+          return parsed.map((t) => ({
+            ...t,
+            date: new Date(t.date),
+          }));
+        },
+        write: (v) => JSON.stringify(v),
+      },
     }
-  }
+  );
 
-  // Save to localStorage
-  const saveTransactions = () => {
-    if (process.client) {
-      localStorage.setItem(
-        'my-pocket-transactions',
-        JSON.stringify(transactions.value)
-      );
+  // Learned category mappings from user corrections
+  const learnedMappings = useLocalStorage<LearnedMapping[]>(
+    'my-pocket:learned-mappings',
+    [],
+    {
+      serializer: {
+        read: (v) => {
+          if (!v) return [];
+          const parsed = JSON.parse(v) as LearnedMapping[];
+          return parsed.map((m) => ({
+            ...m,
+            lastUpdated: new Date(m.lastUpdated),
+          }));
+        },
+        write: (v) => JSON.stringify(v),
+      },
+    }
+  );
+
+  // Learn from a manual category correction
+  const learnMapping = (description: string, category: Category) => {
+    const normalized = normalizeDescription(description);
+    const existing = learnedMappings.value.find(
+      (m) => m.description === normalized
+    );
+
+    if (existing) {
+      existing.category = category;
+      existing.count++;
+      existing.lastUpdated = new Date();
+    } else {
+      learnedMappings.value.push({
+        description: normalized,
+        category,
+        count: 1,
+        lastUpdated: new Date(),
+      });
     }
   };
 
-  // Auto-categorize transaction based on description
-  const categorizeTransaction = (description: string): Category => {
-    const lowerDesc = description.toLowerCase();
+  // Export learned mappings (for sharing with other users later)
+  const exportLearnedMappings = (): LearnedMapping[] => {
+    return learnedMappings.value
+      .filter((m) => m.count >= 2) // Only export if used at least twice
+      .map((m) => ({ ...m }));
+  };
 
-    // Check if it's income
-    if (
-      lowerDesc.includes('deposit') ||
-      lowerDesc.includes('salary') ||
-      lowerDesc.includes('payroll')
-    ) {
-      return 'income';
-    }
-
-    // Check each category's keywords
-    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS) as [
-      Category,
-      string[]
-    ][]) {
-      if (
-        keywords.some((keyword: string) =>
-          lowerDesc.includes(keyword.toLowerCase())
-        )
-      ) {
-        return category as Category;
+  // Import learned mappings (merge with existing)
+  const importLearnedMappings = (imported: LearnedMapping[]) => {
+    imported.forEach((imp) => {
+      const existing = learnedMappings.value.find(
+        (m) => m.description === imp.description
+      );
+      if (!existing) {
+        learnedMappings.value.push({ ...imp, lastUpdated: new Date() });
+      } else if (imp.count > existing.count) {
+        // Only override if imported has more confidence
+        existing.category = imp.category;
+        existing.count = imp.count;
+        existing.lastUpdated = new Date();
       }
-    }
+    });
+  };
 
-    return 'other';
+  // Auto-categorize transaction using learned mappings
+  const autoCategorize = (description: string): Category => {
+    return categorizeTransaction(description, learnedMappings.value);
   };
 
   // Add transaction
@@ -70,7 +114,9 @@ export const useTransactions = () => {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
     transactions.value.push(newTransaction);
-    saveTransactions();
+
+    // Refresh recurring patterns after adding transaction
+    refreshRecurringPatterns();
   };
 
   // Add multiple transactions (for CSV import)
@@ -80,36 +126,39 @@ export const useTransactions = () => {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     }));
     transactions.value.push(...withIds);
-    saveTransactions();
+
+    // Refresh recurring patterns after bulk import
+    refreshRecurringPatterns();
   };
 
   // Update transaction category (for learning)
-  const updateTransactionCategory = (id: string, category: Category) => {
+  const updateTransactionCategory = (
+    id: string,
+    category: Category,
+    shouldLearn = true
+  ) => {
     const transaction = transactions.value.find((t) => t.id === id);
-    if (transaction) {
-      transaction.category = category;
-      saveTransactions();
+    if (!transaction) return;
+
+    // Learn from manual correction
+    if (shouldLearn && transaction.category !== category) {
+      learnMapping(transaction.description, category);
     }
+
+    transactions.value = transactions.value.map((t) =>
+      t.id === id ? { ...t, category } : t
+    );
   };
 
   // Delete transaction
   const deleteTransaction = (id: string) => {
     transactions.value = transactions.value.filter((t) => t.id !== id);
-    saveTransactions();
   };
 
   // Clear all transactions
   const clearAllTransactions = () => {
     transactions.value = [];
-    saveTransactions();
   };
-
-  // Get transactions sorted by date (newest first)
-  const sortedTransactions = computed(() => {
-    return [...transactions.value].sort(
-      (a, b) => b.date.getTime() - a.date.getTime()
-    );
-  });
 
   // Get expenses only (negative amounts)
   const expenses = computed(() => {
@@ -179,157 +228,191 @@ export const useTransactions = () => {
     }, {} as Record<Category, number>);
   });
 
-  // Detect anomalies (unusual spending)
-  const detectAnomalies = (): Transaction[] => {
-    const expensesByCategory = expenses.value.reduce((acc, t) => {
-      if (!acc[t.category]) acc[t.category] = [];
-      acc[t.category].push(Math.abs(t.amount));
-      return acc;
-    }, {} as Record<Category, number[]>);
-
-    const anomalies: Transaction[] = [];
-
-    for (const transaction of expenses.value) {
-      const categoryAmounts = expensesByCategory[transaction.category] || [];
-      if (categoryAmounts.length < 3) continue; // Need at least 3 transactions
-
-      const amounts = categoryAmounts.filter(
-        (a) => a !== Math.abs(transaction.amount)
-      );
-      const avg = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-      const stdDev = Math.sqrt(
-        amounts.reduce((sum, a) => sum + Math.pow(a - avg, 2), 0) /
-          amounts.length
-      );
-
-      // Flag if transaction is more than 2 standard deviations from mean
-      if (Math.abs(transaction.amount) > avg + 2 * stdDev) {
-        anomalies.push({ ...transaction, isAnomaly: true });
-      }
+  // Cached recurring payments for performance
+  const cachedRecurring = useLocalStorage<RecurringPayment[]>(
+    'my-pocket:recurring-payments',
+    [],
+    {
+      serializer: {
+        read: (v) => {
+          if (!v) return [];
+          const parsed = JSON.parse(v) as RecurringPayment[];
+          // Convert date strings back to Date objects
+          return parsed.map((rp) => ({
+            ...rp,
+            lastDate: new Date(rp.lastDate),
+            nextExpectedDate: rp.nextExpectedDate
+              ? new Date(rp.nextExpectedDate)
+              : undefined,
+          }));
+        },
+        write: (v) => JSON.stringify(v),
+      },
     }
+  );
 
-    return anomalies;
-  };
-
-  // Detect recurring payments
-  const detectRecurringPayments = (): RecurringPayment[] => {
-    const merchantGroups = expenses.value.reduce((acc, t) => {
-      const merchant = t.merchant ?? t.description.split(' ')[0] ?? '';
-      if (!acc[merchant]) acc[merchant] = [];
-      acc[merchant].push(t);
-      return acc;
-    }, {} as Record<string, Transaction[]>);
+  // Detect recurring payments (both expenses and income)
+  const detectRecurringPayments = (
+    forceRefresh = false
+  ): RecurringPayment[] => {
+    if (!forceRefresh && cachedRecurring.value.length > 0) {
+      return cachedRecurring.value;
+    }
 
     const recurring: RecurringPayment[] = [];
 
-    for (const [merchant, txns] of Object.entries(merchantGroups)) {
-      if (txns.length < 2) continue;
+    // Group by merchant/description with fuzzy matching
+    const merchantGroups: Record<string, Transaction[]> = {};
+
+    for (const t of transactions.value) {
+      const merchant = t.merchant ?? t.description.split(' ')[0] ?? '';
+      const normalizedMerchant = merchant.toLowerCase().trim();
+
+      // Try to find similar existing merchant (fuzzy matching)
+      let matchedMerchant = normalizedMerchant;
+      for (const existingMerchant of Object.keys(merchantGroups)) {
+        const similarity = getSimilarity(normalizedMerchant, existingMerchant);
+        // If similarity is above 80%, consider them the same merchant
+        if (similarity > 0.8) {
+          matchedMerchant = existingMerchant;
+          break;
+        }
+      }
+
+      if (!merchantGroups[matchedMerchant]) {
+        merchantGroups[matchedMerchant] = [];
+      }
+      merchantGroups[matchedMerchant]!.push(t);
+    }
+
+    // Analyze each merchant group
+    for (const [merchant, groupTxns] of Object.entries(merchantGroups)) {
+      const firstTxn = groupTxns[0];
+      if (!firstTxn) continue;
 
       // Sort by date
-      const sorted = txns.sort((a, b) => a.date.getTime() - b.date.getTime());
+      const sorted = groupTxns.sort(
+        (a, b) => a.date.getTime() - b.date.getTime()
+      );
 
-      // Calculate intervals between transactions
+      // Calculate intervals between transactions (in days)
       const intervals: number[] = [];
       for (let i = 1; i < sorted.length; i++) {
+        const curr = sorted[i];
+        const prev = sorted[i - 1];
+        if (!curr || !prev) continue;
         const daysDiff =
-          (sorted[i].date.getTime() - sorted[i - 1].date.getTime()) /
-          (1000 * 60 * 60 * 24);
+          (curr.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
         intervals.push(daysDiff);
       }
 
-      // Check if intervals are consistent (within 20% variance)
+      if (intervals.length === 0) continue;
+
       const avgInterval =
         intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
-      const isConsistent = intervals.every(
-        (i) => Math.abs(i - avgInterval) / avgInterval < 0.2
+
+      // Calculate coefficient of variation for intervals
+      const intervalStdDev = Math.sqrt(
+        intervals.reduce((s, i) => s + Math.pow(i - avgInterval, 2), 0) /
+          intervals.length
       );
+      const intervalCV = intervalStdDev / avgInterval;
 
-      // Check if amounts are consistent (within 20% variance)
-      const avgAmount =
-        txns.reduce((sum, t) => sum + Math.abs(t.amount), 0) / txns.length;
-      const isAmountConsistent = txns.every(
-        (t) => Math.abs(Math.abs(t.amount) - avgAmount) / avgAmount < 0.2
+      // Check amount consistency
+      const amounts = sorted.map((t) => t.amount);
+      const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
+      const amountStdDev = Math.sqrt(
+        amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) /
+          amounts.length
       );
+      const amountCV = amountStdDev / Math.abs(avgAmount);
 
-      if (isConsistent && isAmountConsistent && avgInterval > 0) {
-        let frequency: 'weekly' | 'monthly' | 'yearly';
-        if (avgInterval <= 10) frequency = 'weekly';
-        else if (avgInterval <= 45) frequency = 'monthly';
-        else frequency = 'yearly';
+      // Determine if it's recurring based on consistency thresholds
+      // More lenient thresholds: allow up to 40% variation in intervals, 30% in amounts
+      const isIntervalConsistent = intervalCV < 0.4;
+      const isAmountConsistent = amountCV < 0.3;
 
-        const lastTxn = sorted[sorted.length - 1];
+      if (!isIntervalConsistent || !isAmountConsistent) continue;
 
-        recurring.push({
-          merchant,
-          amount: avgAmount,
-          category: lastTxn.category,
-          frequency,
-          lastDate: lastTxn.date,
-          nextExpectedDate: new Date(
-            lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000
-          ),
-          confidence: Math.min(txns.length / 5, 1), // Max confidence at 5+ occurrences
-          count: txns.length,
-        });
-      }
+      // Determine frequency based on average interval
+      let frequency: 'weekly' | 'monthly' | 'yearly' | 'daily' | 'one-time';
+      if (avgInterval <= 2) frequency = 'daily';
+      else if (avgInterval <= 10) frequency = 'weekly';
+      else if (avgInterval <= 45) frequency = 'monthly';
+      else frequency = 'yearly';
+
+      const lastTxn = sorted[sorted.length - 1];
+      if (!lastTxn) continue;
+
+      // Use the most recent merchant name
+      const displayMerchant = lastTxn.merchant ?? merchant;
+
+      // Calculate confidence score (0-1)
+      // Based on: count (40%), interval consistency (40%), amount consistency (20%)
+      const countScore = Math.min(sorted.length / 12, 1); // Max at 12 occurrences
+      const intervalScore = Math.max(0, 1 - intervalCV); // Lower CV = higher score
+      const amountScore = Math.max(0, 1 - amountCV); // Lower CV = higher score
+
+      const confidence =
+        countScore * 0.4 + intervalScore * 0.4 + amountScore * 0.2;
+
+      // Only include if confidence is above 0.5 (50%)
+      if (confidence < 0.5) continue;
+
+      recurring.push({
+        merchant: displayMerchant,
+        amount: avgAmount,
+        category: lastTxn.category,
+        frequency,
+        lastDate: lastTxn.date,
+        nextExpectedDate: new Date(
+          lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000
+        ),
+        intervals,
+        count: sorted.length,
+        confidence: Math.min(0.99, confidence), // Cap at 99%
+        amountStdDev,
+      });
     }
 
-    return recurring.sort((a, b) => b.amount - a.amount);
+    // Sort by absolute amount (largest first)
+    const sortedRecurring = recurring.sort(
+      (a, b) => Math.abs(b.amount) - Math.abs(a.amount)
+    );
+
+    // Cache the results in memory and localStorage
+    cachedRecurring.value = sortedRecurring;
+
+    return sortedRecurring;
   };
 
-  // Generate insights
+  // Trigger recurring detection when transactions change
+  const refreshRecurringPatterns = () => {
+    detectRecurringPayments(true);
+  };
+
+  // Generate insights (using utility functions)
   const generateInsights = (): Insight[] => {
-    const insights: Insight[] = [];
-    const anomalies = detectAnomalies();
     const recurring = detectRecurringPayments();
+    const recurringInsights = generateRecurringInsights(recurring);
+    const categoryInsights = generateCategoryInsights(categoryStats.value);
 
-    // Anomaly insights
-    for (const anomaly of anomalies.slice(0, 3)) {
-      insights.push({
-        type: 'anomaly',
-        message: `Unusual ${anomaly.category} expense: $${Math.abs(
-          anomaly.amount
-        ).toFixed(2)} at ${anomaly.description}`,
-        category: anomaly.category,
-        severity: 'warning',
-        timestamp: new Date(),
-      });
-    }
-
-    // Recurring payment insights
-    for (const payment of recurring.slice(0, 2)) {
-      insights.push({
-        type: 'recurring',
-        message: `${payment.merchant} - $${payment.amount.toFixed(2)} ${
-          payment.frequency
-        } subscription detected`,
-        category: payment.category,
-        severity: 'info',
-        timestamp: new Date(),
-      });
-    }
-
-    // Top spending category
-    if (categoryStats.value.length > 0) {
-      const top = categoryStats.value[0];
-      insights.push({
-        type: 'trend',
-        message: `${
-          top.category.charAt(0).toUpperCase() + top.category.slice(1)
-        } is your top expense at $${top.total.toFixed(
-          2
-        )} (${top.percentage.toFixed(1)}%)`,
-        category: top.category,
-        severity: 'info',
-        timestamp: new Date(),
-      });
-    }
-
-    return insights;
+    // Convert InsightMessages to legacy Insight format
+    const allMessages = [...recurringInsights, ...categoryInsights];
+    return allMessages.map((msg) => ({
+      type: msg.type as 'anomaly' | 'trend' | 'recurring' | 'achievement',
+      message: msg.description,
+      category: msg.category,
+      severity:
+        msg.severity === 'danger'
+          ? 'warning'
+          : (msg.severity as 'info' | 'warning' | 'success'),
+      timestamp: new Date(),
+    }));
   };
 
   return {
-    transactions: sortedTransactions,
+    transactions,
     expenses,
     income,
     monthlyTransactions,
@@ -342,9 +425,12 @@ export const useTransactions = () => {
     updateTransactionCategory,
     deleteTransaction,
     clearAllTransactions,
-    categorizeTransaction,
-    detectAnomalies,
+    categorizeTransaction: autoCategorize,
     detectRecurringPayments,
+    refreshRecurringPatterns,
     generateInsights,
+    learnedMappings,
+    exportLearnedMappings,
+    importLearnedMappings,
   };
 };

@@ -1,7 +1,7 @@
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-4">
     <div>
-      <label class="block text-sm font-medium text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-black dark:text-white mb-2">
         Description
       </label>
       <UiInput
@@ -12,7 +12,7 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-slate-300 mb-2"
+      <label class="block text-sm font-medium text-black dark:text-white mb-2"
         >Amount</label
       >
       <UiInput
@@ -26,7 +26,7 @@
       <div class="mt-2 flex gap-2">
         <UiButton
           type="button"
-          :variant="form.isExpense ? 'danger' : 'subtle'"
+          :variant="form.isExpense ? 'danger' : 'secondary'"
           size="sm"
           class="flex-1"
           @click="form.isExpense = true"
@@ -35,7 +35,7 @@
         </UiButton>
         <UiButton
           type="button"
-          :variant="!form.isExpense ? 'primary' : 'subtle'"
+          :variant="!form.isExpense ? 'primary' : 'secondary'"
           size="sm"
           class="flex-1"
           @click="form.isExpense = false"
@@ -46,14 +46,16 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-black dark:text-white mb-2">
         Category
       </label>
       <UiSelect v-model="form.category" :options="categoryOptions" required />
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-slate-300 mb-2">Date</label>
+      <label class="block text-sm font-medium text-black dark:text-white mb-2"
+        >Date</label
+      >
       <UiInput v-model="form.date" type="date" :max="today" required />
     </div>
 

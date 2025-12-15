@@ -1,191 +1,311 @@
 <template>
-  <div class="space-y-8">
-    <section class="grid gap-4 md:grid-cols-3">
-      <UiCard as="div" variant="frosted" padding="p-5" shadow>
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-300">
-          Monthly budget
+  <div class="space-y-6">
+    <!-- Budget Estimate Section -->
+    <UiCard
+      :class="[
+        budgetStatus === 'over'
+          ? '!bg-gradient-to-br !from-rose-500 !to-red-600 !border-rose-500'
+          : '!bg-gradient-to-br !from-indigo-500 !to-purple-600 !border-indigo-500',
+        'text-white',
+      ]"
+      padding="p-8"
+    >
+      <!-- Header -->
+      <div class="mb-8">
+        <p class="text-xs uppercase tracking-wider opacity-70 mb-3">
+          Remaining Budget This Month
         </p>
-        <h2 class="text-3xl font-semibold mt-2">
-          {{ formatMoney(MONTHLY_BUDGET) }}
-        </h2>
-        <div class="mt-4">
-          <div class="flex justify-between text-xs text-slate-300 mb-1">
-            <span>Spent</span>
-            <span>{{ formatMoney(monthlyExpenseTotal) }}</span>
-          </div>
-          <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div
-              class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-lime-300 to-cyan-400"
-              :style="{ width: `${budgetUsage * 100}%` }"
-            ></div>
-          </div>
-        </div>
-        <p class="text-xs text-slate-400 mt-3">{{ budgetUsageLabel }}</p>
-      </UiCard>
-
-      <UiCard
-        as="div"
-        variant="bare"
-        padding="p-5"
-        shadow
-        class="bg-gradient-to-br from-emerald-400 via-cyan-400 to-sky-500 text-slate-950"
-      >
-        <p class="text-xs uppercase tracking-[0.3em]">Projected savings</p>
-        <h2 class="text-3xl font-semibold mt-2">
-          {{ formatMoney(netCashFlow) }}
-        </h2>
-        <p class="text-sm text-slate-800/80 mt-2">{{ savingsCopy }}</p>
-        <div class="mt-4 text-xs text-slate-900/70 flex justify-between">
-          <span>Income</span>
-          <strong>{{ formatMoney(monthlyIncomeTotal) }}</strong>
-        </div>
-      </UiCard>
-
-      <UiCard
-        as="div"
-        padding="p-5"
-        shadow
-        class="bg-gradient-to-br from-rose-500/90 to-orange-500/90"
-      >
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-300">
-          Subscriptions
-        </p>
-        <h2 class="text-3xl font-semibold mt-2">
-          {{ formatMoney(subscriptionBurn) }}/mo
-        </h2>
-        <p class="text-sm text-slate-400 mt-2">
-          {{ recurringPayments.length }} active services
-        </p>
-        <ul class="mt-4 space-y-2 text-sm text-slate-300">
-          <li
-            v-for="payment in recurringPreview"
-            :key="payment.merchant"
-            class="flex justify-between"
+        <h1 class="text-6xl font-bold mb-3">
+          {{ formatMoney(remainingThisMonth) }}
+        </h1>
+        <div class="flex items-center gap-3 text-sm opacity-90">
+          <span
+            >Day {{ monthProgress.daysElapsed }}/{{
+              monthProgress.daysTotal
+            }}</span
           >
-            <span class="truncate pr-2">{{ payment.merchant }}</span>
-            <span>{{ formatMoney(normalizeSubscription(payment)) }}</span>
-          </li>
-        </ul>
-      </UiCard>
-    </section>
+          <span>•</span>
+          <span class="font-medium">{{ budgetPaceMessage }}</span>
+        </div>
+      </div>
 
-    <section class="grid gap-4 md:grid-cols-2">
-      <UiCard class="border-white/5">
+      <!-- Budget Progress Bar -->
+      <div class="mb-8">
+        <div
+          class="flex items-center justify-between text-xs mb-3 opacity-80 font-medium"
+        >
+          <span>Budget Usage</span>
+          <span>{{ Math.round(budgetUsagePercent) }}%</span>
+        </div>
+        <div
+          class="h-5 bg-black/20 rounded-full overflow-hidden flex shadow-inner"
+        >
+          <div
+            class="bg-amber-400"
+            :style="{ width: `${fixedCostsPercent}%` }"
+            :title="`Fixed: ${formatMoney(recurringBurn)}`"
+          ></div>
+          <div
+            class="bg-yellow-300"
+            :style="{ width: `${discretionaryPercent}%` }"
+            :title="`Variable: ${formatMoney(discretionarySpent)}`"
+          ></div>
+        </div>
+        <div class="flex items-center gap-6 text-xs mt-3 opacity-90">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm bg-amber-400"></div>
+            <span>Fixed {{ Math.round(fixedCostsPercent) }}%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm bg-yellow-300"></div>
+            <span>Variable {{ Math.round(discretionaryPercent) }}%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm bg-white/30"></div>
+            <span
+              >Left
+              {{ Math.round(Math.max(0, 100 - budgetUsagePercent)) }}%</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget Breakdown -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-white/10 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+            Expected Income
+          </p>
+          <p class="text-2xl font-bold mb-1">+{{ formatMoney(baseIncome) }}</p>
+          <p v-if="recurringIncomeAmount > 0" class="text-xs opacity-70">
+            {{ monthlyIncomeTotal > 0 ? 'Recurring' : 'Estimated' }}
+          </p>
+        </div>
+        <div class="bg-amber-400/20 rounded-lg p-4 border border-amber-400/30">
+          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+            Fixed Costs
+          </p>
+          <p class="text-2xl font-bold mb-1 text-amber-300">
+            {{ formatMoney(recurringBurn) }}
+          </p>
+          <p class="text-xs opacity-70">Monthly recurring</p>
+        </div>
+        <div
+          class="bg-yellow-300/20 rounded-lg p-4 border border-yellow-300/30"
+        >
+          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+            Variable
+          </p>
+          <p class="text-2xl font-bold mb-1 text-yellow-200">
+            {{ formatMoney(discretionarySpent) }}
+          </p>
+          <p class="text-xs opacity-70">Non-recurring</p>
+        </div>
+        <div class="bg-white/10 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+            Savings Goal
+          </p>
+          <p class="text-2xl font-bold mb-1">
+            {{ formatMoney(targetSavings) }}
+          </p>
+          <p class="text-xs opacity-70">20% of income</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-6 pt-6 border-t border-white/20">
+        <div class="flex items-center justify-between">
+          <span class="text-sm opacity-90">
+            {{
+              remainingThisMonth > 0
+                ? `${formatMoney(
+                    remainingThisMonth /
+                      (monthProgress.daysTotal - monthProgress.daysElapsed + 1)
+                  )} per day for rest of month`
+                : 'Over budget - reduce spending'
+            }}
+          </span>
+          <span class="text-sm font-bold px-3 py-1.5 rounded-full bg-white/20">
+            {{ budgetStatus === 'over' ? '🚨 Over budget' : '✅ On track' }}
+          </span>
+        </div>
+      </div>
+    </UiCard>
+
+    <!-- Spending Breakdown Section -->
+    <div class="grid gap-6 lg:grid-cols-2">
+      <!-- All Spending by Category -->
+      <UiCard>
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-xs text-slate-400">Category budgets</p>
-            <h3 class="text-xl font-semibold">Where your money goes</h3>
+            <p
+              class="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider"
+            >
+              Monthly Spending
+            </p>
+            <h3 class="text-xl font-bold text-black dark:text-white mt-1">
+              {{ formatMoney(monthlyExpenseTotal) }}
+              <span
+                class="text-sm font-normal text-neutral-600 dark:text-neutral-400"
+              >
+                total
+              </span>
+            </h3>
           </div>
-          <span class="text-xs text-slate-500"
-            >{{ categoryBudgetProgress.length }} tracked</span
+          <NuxtLink
+            to="/transactions"
+            class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
           >
+            View all →
+          </NuxtLink>
         </div>
 
-        <div class="space-y-4">
-          <div
-            v-for="item in categoryBudgetProgress"
+        <div class="space-y-3">
+          <article
+            v-for="item in allSpendingByCategory"
             :key="item.category"
-            class="space-y-2"
+            class="flex items-center justify-between py-2"
           >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">{{ CATEGORY_ICONS[item.category] }}</span>
-                <div>
-                  <p class="text-sm font-medium capitalize">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <span class="text-2xl">{{ CATEGORY_ICONS[item.category] }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <p
+                    class="font-medium text-black dark:text-white text-sm capitalize"
+                  >
                     {{ item.category }}
                   </p>
-                  <p class="text-xs text-slate-400">
-                    {{ formatMoney(item.spent) }} /
-                    {{ formatMoney(item.budget) }}
-                  </p>
+                  <span
+                    v-if="item.hasRecurring"
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 uppercase font-medium"
+                  >
+                    Fixed
+                  </span>
                 </div>
+                <p class="text-xs text-neutral-600 dark:text-neutral-400">
+                  {{ item.count }}
+                  {{ item.count === 1 ? 'transaction' : 'transactions' }}
+                </p>
               </div>
-              <span class="text-xs text-slate-400"
-                >{{ Math.round(item.percent) }}%</span
-              >
+              <div class="text-right">
+                <p class="text-sm font-semibold text-rose-500">
+                  -{{ formatMoney(item.total) }}
+                </p>
+                <p class="text-xs text-neutral-600 dark:text-neutral-400">
+                  {{ Math.round(item.percentage) }}%
+                </p>
+              </div>
             </div>
-            <div class="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full"
-                :style="{
-                  width: `${item.percent}%`,
-                  backgroundColor: CATEGORY_COLORS[item.category],
-                }"
-              ></div>
-            </div>
+          </article>
+
+          <div
+            v-if="allSpendingByCategory.length === 0"
+            class="text-center py-8 text-neutral-600 dark:text-neutral-400"
+          >
+            No spending yet this month ✨
           </div>
         </div>
       </UiCard>
 
-      <UiCard class="border-white/5 space-y-4" padding="p-6">
-        <div>
-          <p class="text-xs text-slate-400">Advisor</p>
-          <h3 class="text-xl font-semibold">What needs attention</h3>
-        </div>
-        <ul class="space-y-3">
-          <li
-            v-for="note in advisorNotes"
-            :key="note.title"
-            class="p-4 rounded-2xl border border-white/10 bg-white/5"
+      <!-- Fixed Costs -->
+      <UiCard>
+        <div class="mb-4">
+          <p
+            class="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider"
           >
-            <p class="text-sm text-slate-300 uppercase tracking-[0.2em]">
-              {{ note.tag }}
-            </p>
-            <p class="text-lg font-semibold mt-1">{{ note.title }}</p>
-            <p class="text-sm text-slate-400 mt-1">{{ note.detail }}</p>
-          </li>
-          <li v-if="advisorNotes.length === 0" class="text-sm text-slate-400">
-            Everything looks calm. Keep the momentum! ✨
-          </li>
-        </ul>
-      </UiCard>
-    </section>
-
-    <UiCard as="section" class="border-white/5">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-xs text-slate-400">Recent activity</p>
-          <h3 class="text-xl font-semibold">Latest transactions</h3>
+            Fixed Monthly Costs
+          </p>
+          <h3 class="text-xl font-bold text-black dark:text-white mt-1">
+            {{ formatMoney(recurringBurn) }}
+          </h3>
         </div>
-        <span class="text-xs text-slate-500"
-          >{{ recentTransactions.length }} newest</span
-        >
+
+        <div class="space-y-2">
+          <article
+            v-for="payment in recurringExpenses.slice(0, 6)"
+            :key="payment.merchant"
+            class="flex items-center justify-between py-2"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-lg">{{
+                CATEGORY_ICONS[payment.category]
+              }}</span>
+              <span class="text-sm truncate text-black dark:text-white">
+                {{ payment.merchant }}
+              </span>
+            </div>
+            <span
+              class="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            >
+              {{ formatMoney(normalizeRecurring(payment)) }}
+            </span>
+          </article>
+
+          <NuxtLink
+            v-if="recurringExpenses.length > 6"
+            to="/recurring"
+            class="block text-xs text-indigo-600 dark:text-indigo-400 hover:underline pt-2"
+          >
+            View all {{ recurringExpenses.length }} recurring expenses →
+          </NuxtLink>
+        </div>
+      </UiCard>
+    </div>
+
+    <!-- Insights & Reports Section -->
+    <UiCard>
+      <div class="mb-4">
+        <h2 class="text-xl font-bold text-black dark:text-white">
+          💡 Financial Insights
+        </h2>
+        <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+          AI-powered analysis of your spending patterns
+        </p>
       </div>
 
       <div class="space-y-3">
         <article
-          v-for="transaction in recentTransactions"
-          :key="transaction.id"
-          class="flex items-center justify-between py-3 border-b border-white/5 last:border-none"
+          v-for="insight in allInsights"
+          :key="insight.id"
+          class="p-4 rounded-lg border transition-all"
+          :class="{
+            'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950':
+              insight.severity === 'success',
+            'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950':
+              insight.severity === 'info',
+            'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950':
+              insight.severity === 'warning',
+            'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950':
+              insight.severity === 'danger',
+          }"
         >
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="text-2xl">{{
-              CATEGORY_ICONS[transaction.category]
-            }}</span>
-            <div class="min-w-0">
-              <p class="font-medium truncate">
-                {{ getFirstLine(transaction.description) }}
-              </p>
-              <p class="text-xs text-slate-500">
-                {{ formatDate(transaction.date) }}
-              </p>
-            </div>
-          </div>
-          <div
-            :class="
-              transaction.amount > 0 ? 'text-emerald-400' : 'text-rose-400'
-            "
-            class="text-sm font-semibold"
+          <p
+            class="text-xs uppercase font-medium tracking-wider mb-1"
+            :class="{
+              'text-emerald-600 dark:text-emerald-400':
+                insight.severity === 'success',
+              'text-blue-600 dark:text-blue-400': insight.severity === 'info',
+              'text-amber-600 dark:text-amber-400':
+                insight.severity === 'warning',
+              'text-rose-600 dark:text-rose-400': insight.severity === 'danger',
+            }"
           >
-            {{ formatSignedMoney(transaction.amount) }}
-          </div>
+            {{ insight.type }}
+          </p>
+          <p class="font-bold text-base text-black dark:text-white">
+            {{ insight.title }}
+          </p>
+          <p class="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
+            {{ insight.description }}
+          </p>
         </article>
 
         <div
-          v-if="recentTransactions.length === 0"
-          class="text-center py-8 text-slate-500"
+          v-if="allInsights.length === 0"
+          class="text-center py-8 text-neutral-600 dark:text-neutral-400"
         >
-          No recent transactions yet.
+          <p class="text-3xl mb-2">✨</p>
+          <p>Add more transactions to get personalized insights</p>
         </div>
       </div>
     </UiCard>
@@ -193,23 +313,25 @@
 </template>
 
 <script setup lang="ts">
-import { format, isToday } from 'date-fns';
-import { CATEGORY_ICONS, CATEGORY_COLORS } from '~/utils/categories';
-import { CATEGORY_BUDGETS, MONTHLY_BUDGET } from '~/utils/budgets';
+import { CATEGORY_ICONS } from '~/utils/categories';
+import {
+  detectAnomalies,
+  analyzeSpendingTrends,
+  analyzeBudgetPacing,
+  type InsightMessage,
+} from '~/utils/insights';
 import type { Category, RecurringPayment } from '~/types';
 
 const {
   transactions,
   monthlyExpenses,
   monthlyIncome,
-  monthlyCategoryTotals,
   detectRecurringPayments,
-  generateInsights,
 } = useTransactions();
 
-const { formatCurrency } = useCurrency();
+const { monthProgress, analyzeRecurring } = useFinancialAnalysis();
 
-const getFirstLine = (text: string) => text.split('\n')[0] || text;
+const { formatCurrency } = useCurrency();
 
 const monthlyExpenseTotal = computed(() =>
   Math.abs(monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0))
@@ -219,134 +341,201 @@ const monthlyIncomeTotal = computed(() =>
   monthlyIncome.value.reduce((sum, t) => sum + t.amount, 0)
 );
 
-const budgetUsage = computed(() =>
-  Math.min(1, monthlyExpenseTotal.value / MONTHLY_BUDGET)
-);
-const budgetUsageLabel = computed(() => {
-  if (budgetUsage.value >= 1)
-    return 'Budget exceeded. Dial back discretionary spend.';
-  if (budgetUsage.value >= 0.8)
-    return 'Close to the limit — keep a closer eye this week.';
-  return 'Healthy pace. You have breathing room.';
-});
+const recurringAnalysis = computed(() => analyzeRecurring.value);
 
-const netCashFlow = computed(
-  () => monthlyIncomeTotal.value - monthlyExpenseTotal.value
+const recurringExpenses = computed(() =>
+  detectRecurringPayments()
+    .filter((p) => p.amount < 0)
+    .toSorted((a, b) => normalizeRecurring(b) - normalizeRecurring(a))
 );
 
-const recurringPayments = computed(() => detectRecurringPayments());
+const normalizeRecurring = (payment: RecurringPayment) => {
+  const monthlyAmount = (() => {
+    if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
+    if (payment.frequency === 'yearly') return payment.amount / 12;
+    return payment.amount;
+  })();
 
-const normalizeSubscription = (payment: RecurringPayment) => {
-  if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
-  if (payment.frequency === 'yearly') return payment.amount / 12;
-  return payment.amount;
+  return Math.abs(monthlyAmount);
 };
 
-const subscriptionBurn = computed(() =>
-  recurringPayments.value.reduce(
-    (sum, payment) => sum + normalizeSubscription(payment),
-    0
-  )
+const recurringBurn = computed(() => recurringAnalysis.value.totalMonthly);
+
+// Use recurring income if available, otherwise use actual monthly income
+const recurringIncomeAmount = computed(
+  () => recurringAnalysis.value.recurringIncome
 );
 
-const recurringPreview = computed(() => recurringPayments.value.slice(0, 3));
-
-const categoryBudgetProgress = computed(() => {
-  return Object.entries(CATEGORY_BUDGETS)
-    .map(([category, budget]) => {
-      const spent = monthlyCategoryTotals.value[category as Category] || 0;
-      const percent = budget ? Math.min(100, (spent / budget) * 100) : 0;
-      return {
-        category: category as Category,
-        spent,
-        budget: budget ?? 0,
-        percent,
-      };
-    })
-    .sort((a, b) => b.percent - a.percent);
+const baseIncome = computed(() => {
+  // If we have recurring income detected, use that
+  // Otherwise fall back to actual monthly income
+  return recurringIncomeAmount.value > 0
+    ? recurringIncomeAmount.value
+    : monthlyIncomeTotal.value;
 });
 
-const insights = computed(() => generateInsights());
+// Calculate target savings (20% of income)
+const targetSavings = computed(() => {
+  return baseIncome.value * 0;
+});
 
-const advisorNotes = computed(() => {
-  const notes: { tag: string; title: string; detail: string }[] = [];
-
-  const overBudget = categoryBudgetProgress.value.find(
-    (item) => item.percent >= 95
+// Calculate discretionary spending (non-recurring expenses this month)
+const discretionarySpent = computed(() => {
+  // Get all recurring merchant names (normalized for fuzzy matching)
+  const recurringMerchants = new Set(
+    recurringExpenses.value.map((p) => p.merchant.toLowerCase().trim())
   );
-  if (overBudget) {
-    notes.push({
-      tag: 'CATEGORY',
-      title: `${capitalize(overBudget.category)} is maxed out`,
-      detail: `You've burned through ${formatMoney(
-        overBudget.spent
-      )} of the ${formatMoney(overBudget.budget)} envelope.`,
-    });
-  }
 
-  if (netCashFlow.value < 0) {
-    notes.push({
-      tag: 'CASH FLOW',
-      title: 'You are overspending this month',
-      detail: `Reduce discretionary spend by ${formatMoney(
-        Math.abs(netCashFlow.value)
-      )} to break even.`,
-    });
-  }
+  // Filter out transactions that match recurring merchants
+  const nonRecurringExpenses = monthlyExpenses.value.filter((t) => {
+    const merchant = (t.merchant ?? t.description.split(' ')[0] ?? '')
+      .toLowerCase()
+      .trim();
+    // Check if this merchant is in our recurring list (fuzzy match would be more accurate but this is simpler)
+    return !Array.from(recurringMerchants).some(
+      (rm) => merchant.includes(rm) || rm.includes(merchant)
+    );
+  });
 
-  const subscriptionShare = subscriptionBurn.value / MONTHLY_BUDGET;
-  if (subscriptionShare > 0.25) {
-    notes.push({
-      tag: 'SUBSCRIPTIONS',
-      title: 'Subscriptions eat a quarter of your budget',
-      detail: `Review recurring services — trimming ${formatMoney(
-        subscriptionBurn.value * 0.2
-      )} saves you this month.`,
-    });
-  }
-
-  if (notes.length === 0 && insights.value.length) {
-    notes.push({
-      tag: 'INSIGHT',
-      title: insights.value[0]?.message ?? '',
-      detail: 'Auto insight based on your latest activity.',
-    });
-  }
-
-  return notes;
+  return Math.abs(nonRecurringExpenses.reduce((sum, t) => sum + t.amount, 0));
 });
 
-const recentTransactions = computed(() => transactions.value.slice(0, 4));
+// Calculate what's left this month
+const remainingThisMonth = computed(() => {
+  return (
+    baseIncome.value -
+    recurringBurn.value -
+    targetSavings.value -
+    discretionarySpent.value
+  );
+});
 
-const formatDate = (date: Date) => {
-  if (isToday(date)) return 'Today';
-  return format(date, 'MMM d');
-};
+// Budget status for color coding
+const budgetStatus = computed((): 'good' | 'over' => {
+  // Ensure all values are loaded before determining status
+  if (!baseIncome.value && !monthlyIncomeTotal.value) return 'good';
+  return remainingThisMonth.value <= 0 ? 'over' : 'good';
+});
+
+// Budget usage percentages for the bar
+const totalBudget = computed(() => {
+  const budget = baseIncome.value - targetSavings.value;
+  return budget > 0 ? budget : 1; // Prevent division by zero
+});
+
+const fixedCostsPercent = computed(() => {
+  if (totalBudget.value <= 1) return 0;
+  return Math.min(100, (recurringBurn.value / totalBudget.value) * 100);
+});
+
+const discretionaryPercent = computed(() => {
+  if (totalBudget.value <= 1) return 0;
+  return Math.min(
+    100 - fixedCostsPercent.value,
+    (discretionarySpent.value / totalBudget.value) * 100
+  );
+});
+
+const budgetUsagePercent = computed(() => {
+  if (totalBudget.value <= 1) return 0;
+  return Math.min(
+    100,
+    ((recurringBurn.value + discretionarySpent.value) / totalBudget.value) * 100
+  );
+});
+
+// Budget pacing message
+const budgetPaceMessage = computed(() => {
+  const progress = monthProgress.value;
+  const percentElapsed = progress.percentElapsed;
+  const expectedToSpend =
+    (baseIncome.value - recurringBurn.value - targetSavings.value) *
+    percentElapsed;
+
+  if (discretionarySpent.value > expectedToSpend * 1.2) {
+    return 'Spending faster than planned';
+  } else if (discretionarySpent.value < expectedToSpend * 0.8) {
+    return 'Under budget, great job!';
+  }
+  return 'On track';
+});
+
+// Group all spending by category (including recurring)
+const allSpendingByCategory = computed(() => {
+  const categoryTotals: Record<
+    Category,
+    { total: number; count: number; hasRecurring: boolean }
+  > = {} as Record<
+    Category,
+    { total: number; count: number; hasRecurring: boolean }
+  >;
+
+  // Add all monthly expenses
+  monthlyExpenses.value.forEach((transaction) => {
+    if (!categoryTotals[transaction.category]) {
+      categoryTotals[transaction.category] = {
+        total: 0,
+        count: 0,
+        hasRecurring: false,
+      };
+    }
+    categoryTotals[transaction.category].total += Math.abs(transaction.amount);
+    categoryTotals[transaction.category].count += 1;
+  });
+
+  // Mark categories that have recurring expenses
+  recurringExpenses.value.forEach((payment) => {
+    if (categoryTotals[payment.category]) {
+      categoryTotals[payment.category].hasRecurring = true;
+    }
+  });
+
+  const total = monthlyExpenseTotal.value;
+
+  return Object.entries(categoryTotals)
+    .map(([category, data]) => ({
+      category: category as Category,
+      total: data.total,
+      count: data.count,
+      hasRecurring: data.hasRecurring,
+      percentage: total > 0 ? (data.total / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+});
+
+// Generate all insights
+const allInsights = computed((): InsightMessage[] => {
+  const insights: InsightMessage[] = [];
+
+  // Budget pacing insight
+  const pacingInsight = analyzeBudgetPacing(
+    monthProgress.value.daysElapsed,
+    monthProgress.value.daysTotal,
+    discretionarySpent.value,
+    baseIncome.value - recurringBurn.value - targetSavings.value
+  );
+  if (pacingInsight) {
+    insights.push(pacingInsight);
+  }
+
+  // Anomaly detection
+  const anomalies = detectAnomalies(monthlyExpenses.value);
+  insights.push(...anomalies);
+
+  // Spending trends
+  const trends = analyzeSpendingTrends(
+    monthlyExpenses.value,
+    transactions.value
+  );
+  insights.push(...trends);
+
+  // Limit to top 5 insights
+  return insights.slice(0, 5);
+});
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>
   formatCurrency(value, {
     maximumFractionDigits: 0,
     ...options,
   });
-
-const formatSignedMoney = (value: number) => {
-  const formatted = formatMoney(Math.abs(value), {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  });
-  return value >= 0 ? `+${formatted}` : `-${formatted}`;
-};
-
-const savingsCopy = computed(() => {
-  if (netCashFlow.value > 0) {
-    return `On pace to save ${formatMoney(netCashFlow.value)} this month.`;
-  }
-  if (netCashFlow.value === 0) return 'Break-even month. Keep momentum.';
-  return `Need ${formatMoney(
-    Math.abs(netCashFlow.value)
-  )} to get back on track.`;
-});
-
-const capitalize = (value: string) =>
-  value.charAt(0).toUpperCase() + value.slice(1);
 </script>

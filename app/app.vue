@@ -1,32 +1,25 @@
 <template>
-  <div
-    class="min-h-screen text-white pb-32 transition-colors duration-500"
-    :style="backgroundStyle"
-  >
-    <div class="max-w-6xl mx-auto px-4 lg:px-8 pt-10 space-y-8">
+  <div class="min-h-screen pb-32 transition-colors bg-white dark:bg-black">
+    <div class="max-w-6xl mx-auto px-4 lg:px-8 pt-8 space-y-6">
       <header
-        class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between"
+        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
       >
-        <div class="space-y-2">
-          <h1
-            class="text-3xl md:text-4xl font-semibold tracking-tight text-[var(--text-primary)]"
-          >
-            MyPocket
-          </h1>
-        </div>
+        <h1 class="text-2xl md:text-3xl font-bold text-black dark:text-white">
+          MyPocket
+        </h1>
 
         <nav
-          class="hidden md:flex items-center gap-2 rounded-2xl p-1 bg-[var(--surface-card)] border border-[var(--surface-border)]"
+          class="hidden md:flex items-center gap-1 rounded-lg p-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
         >
           <NuxtLink
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
-            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border border-transparent"
+            class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors"
             :class="
               isActive(item.path)
-                ? 'bg-[var(--accent-soft)] text-[var(--text-primary)] border-[var(--surface-border-strong)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                ? 'bg-neutral-200 dark:bg-neutral-800 text-black dark:text-white'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
             "
           >
             <span>{{ item.icon }}</span>
@@ -38,84 +31,56 @@
       <NuxtPage />
     </div>
 
-    <button
-      class="fixed bottom-28 right-6 md:right-10 h-14 w-14 rounded-2xl bg-[var(--accent)] text-[var(--accent-fg)] border border-transparent flex items-center justify-center text-3xl shadow-none hover:bg-[var(--accent-strong)] transition-transform duration-200 transform hover:-translate-y-0.5"
-      @click="showAddTransaction = true"
-      aria-label="Add transaction"
-    >
-      ➕
-    </button>
-
     <!-- Bottom Navigation -->
     <nav
-      class="fixed bottom-0 left-0 right-0 safe-area-inset-bottom backdrop-blur-xl bg-[var(--surface-card)] border-t border-[var(--surface-border)] md:hidden"
+      class="fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/95 dark:bg-neutral-900/95 border-t border-neutral-200 dark:border-neutral-800 md:hidden"
     >
-      <div
-        class="flex justify-around items-center h-20 max-w-4xl mx-auto px-4 py-2"
-      >
+      <div class="flex justify-around items-center h-16 max-w-4xl mx-auto px-4">
         <NuxtLink
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="flex flex-col items-center justify-center flex-1 gap-1 text-xs font-medium"
+          class="flex flex-col items-center justify-center flex-1 gap-1 text-xs font-medium transition-colors"
           :class="[
             isActive(item.path)
-              ? 'text-[var(--text-primary)]'
-              : 'text-[var(--text-muted)]',
-            'transition-colors',
+              ? 'text-black dark:text-white'
+              : 'text-neutral-600 dark:text-neutral-400',
           ]"
         >
-          <span class="text-2xl">{{ item.icon }}</span>
+          <span class="text-xl">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
         </NuxtLink>
       </div>
     </nav>
-
-    <!-- Add Transaction Modal -->
-    <Teleport to="body" v-if="showAddTransaction">
-      <div
-        class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4"
-      >
-        <div
-          class="bg-[var(--surface-card)] rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-6 space-y-4 animate-slide-up border border-[var(--surface-border)]"
-          @click.stop
-        >
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-[var(--text-primary)]">
-              Add Transaction
-            </h2>
-            <button
-              @click="showAddTransaction = false"
-              class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-2xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          <AddTransactionForm @close="showAddTransaction = false" />
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-const showAddTransaction = ref(false);
 const route = useRoute();
+const { isDark } = useTheme();
 
 const navItems = [
   { path: '/', label: 'Overview', icon: '📊' },
   { path: '/transactions', label: 'Transactions', icon: '📄' },
-  { path: '/subscriptions', label: 'Subscriptions', icon: '🔄' },
+  { path: '/recurring', label: 'Recurring', icon: '🔄' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 const isActive = (path: string) => route.path === path;
 
-const backgroundStyle = computed(() => ({
-  backgroundImage:
-    'linear-gradient(to bottom, var(--bg-top), var(--bg-mid), var(--bg-bottom))',
-  backgroundColor: 'var(--bg-bottom)',
-  color: 'var(--text-primary)',
-}));
+watch(
+  () => isDark.value,
+  (newVal) => {
+    if (!import.meta.client) {
+      return;
+    }
+
+    if (newVal) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  },
+  { immediate: true }
+);
 </script>
