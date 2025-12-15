@@ -275,6 +275,21 @@ export const CATEGORIES = {
       'cashback',
     ],
   },
+  transfer: {
+    color: '#8b5cf6',
+    icon: '🔄',
+    keywords: [
+      'transfer',
+      'überweisung',
+      'payment sent',
+      'ausgang',
+      'kontoübertragung',
+      'account transfer',
+      'internal',
+      'zwischenkonto',
+      'tagesgeld',
+    ],
+  },
   other: {
     color: '#64748b',
     icon: '📦',
