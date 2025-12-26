@@ -1,21 +1,3 @@
-import type { Category } from '~/types';
-
-/**
- * Learned category mapping from user corrections
- *
- * This system automatically learns from manual category adjustments:
- * 1. When a user changes a transaction's category, the description->category mapping is stored
- * 2. Future transactions with similar descriptions are automatically categorized using learned data
- * 3. Learned mappings take priority over keyword-based categorization
- * 4. Can be exported/imported for sharing across users
- */
-export interface LearnedMapping {
-  description: string; // Normalized transaction description
-  category: Category;
-  count: number; // How many times user has set this
-  lastUpdated: Date;
-}
-
 export interface CategoryConfig {
   color: string;
   icon: string;
@@ -297,6 +279,8 @@ export const CATEGORIES = {
   },
 } satisfies Record<string, CategoryConfig>;
 
+export type Category = keyof typeof CATEGORIES;
+
 /**
  * Normalize description for consistent matching while preserving key information
  * Keeps important words and structure, removes dates/amounts/noise
@@ -313,36 +297,12 @@ export const normalizeDescription = (description: string): string => {
 };
 
 /**
- * Categorize a transaction using learned mappings and keyword fallback
+ * Categorize a transaction using keyword matching
  */
-export const categorizeTransaction = (
-  description: string,
-  learnedMappings: LearnedMapping[]
-): Category => {
-  const normalizedDesc = normalizeDescription(description);
+export const categorizeTransaction = (description: string): Category => {
   const lowerDesc = description.toLowerCase();
 
-  // 1. Check learned mappings first (user preferences take priority)
-  // Try exact match first
-  let learned = learnedMappings.find((m) => m.description === normalizedDesc);
-
-  // If no exact match, try partial match (at least 70% of learned description must match)
-  if (!learned) {
-    learned = learnedMappings.find((m) => {
-      const learnedWords = m.description.split(' ').filter((w) => w.length > 2);
-      const descWords = normalizedDesc.split(' ');
-      const matchingWords = learnedWords.filter((w) =>
-        descWords.some((dw) => dw.includes(w) || w.includes(dw))
-      );
-      return matchingWords.length >= Math.ceil(learnedWords.length * 0.7);
-    });
-  }
-
-  if (learned) {
-    return learned.category;
-  }
-
-  // 2. Check keyword-based categories
+  // Check keyword-based categories
   for (const [category, { keywords }] of Object.entries(CATEGORIES)) {
     if (
       keywords.some((keyword: string) =>

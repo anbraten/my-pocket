@@ -177,12 +177,6 @@
                   >
                     {{ item.category }}
                   </p>
-                  <span
-                    v-if="item.hasRecurring"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 uppercase font-medium"
-                  >
-                    Fixed
-                  </span>
                 </div>
                 <p class="text-xs text-neutral-600 dark:text-neutral-400">
                   {{ item.count }}
@@ -315,14 +309,14 @@
 </template>
 
 <script setup lang="ts">
-import { CATEGORIES } from '~/utils/categories';
+import { CATEGORIES, type Category } from '~/utils/categories';
 import {
   detectAnomalies,
   analyzeSpendingTrends,
   analyzeBudgetPacing,
   type InsightMessage,
 } from '~/utils/insights';
-import type { Category, RecurringPayment } from '~/types';
+import type { RecurringPayment } from '~/types';
 
 const {
   transactions,
@@ -464,13 +458,8 @@ const budgetPaceMessage = computed(() => {
 
 // Group all spending by category (including recurring)
 const allSpendingByCategory = computed(() => {
-  const categoryTotals: Record<
-    Category,
-    { total: number; count: number; hasRecurring: boolean }
-  > = {} as Record<
-    Category,
-    { total: number; count: number; hasRecurring: boolean }
-  >;
+  const categoryTotals: Record<Category, { total: number; count: number }> =
+    {} as Record<Category, { total: number; count: number }>;
 
   // Add all monthly expenses
   monthlyExpenses.value.forEach((transaction) => {
@@ -478,18 +467,10 @@ const allSpendingByCategory = computed(() => {
       categoryTotals[transaction.category] = {
         total: 0,
         count: 0,
-        hasRecurring: false,
       };
     }
     categoryTotals[transaction.category].total += Math.abs(transaction.amount);
     categoryTotals[transaction.category].count += 1;
-  });
-
-  // Mark categories that have recurring expenses
-  recurringExpenses.value.forEach((payment) => {
-    if (categoryTotals[payment.category]) {
-      categoryTotals[payment.category].hasRecurring = true;
-    }
   });
 
   const total = monthlyExpenseTotal.value;
@@ -499,7 +480,6 @@ const allSpendingByCategory = computed(() => {
       category: category as Category,
       total: data.total,
       count: data.count,
-      hasRecurring: data.hasRecurring,
       percentage: total > 0 ? (data.total / total) * 100 : 0,
     }))
     .sort((a, b) => b.total - a.total);

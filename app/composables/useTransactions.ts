@@ -2,23 +2,21 @@ import { useLocalStorage } from '@vueuse/core';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import type {
   Transaction,
-  Category,
   CategoryStats,
   Insight,
   RecurringPayment,
 } from '~/types';
-import {
-  categorizeTransaction,
-  normalizeDescription,
-  type LearnedMapping,
-} from '~/utils/categories';
+import type { Category } from '~/utils/categories';
 import { getSimilarity } from '~/utils/stringUtils';
 import {
   generateRecurringInsights,
   generateCategoryInsights,
 } from '~/utils/insights';
+import { useCategoryML } from '~/composables/useCategoryML';
 
-export const useTransactions = () => {
+export function useTransactions() {
+  const ml = useCategoryML();
+
   const transactions = useLocalStorage<Transaction[]>(
     'my-pocket:transactions',
     [],
@@ -38,117 +36,81 @@ export const useTransactions = () => {
     }
   );
 
-  // Learned category mappings from user corrections
-  const learnedMappings = useLocalStorage<LearnedMapping[]>(
-    'my-pocket:learned-mappings',
-    [],
-    {
-      serializer: {
-        read: (v) => {
-          if (!v) return [];
-          const parsed = JSON.parse(v) as LearnedMapping[];
-          return parsed.map((m) => ({
-            ...m,
-            lastUpdated: new Date(m.lastUpdated),
-          }));
-        },
-        write: (v) => JSON.stringify(v),
-      },
-    }
-  );
-
-  // Learn from a manual category correction
-  const learnMapping = (description: string, category: Category) => {
-    const normalized = normalizeDescription(description);
-    const existing = learnedMappings.value.find(
-      (m) => m.description === normalized
-    );
-
-    if (existing) {
-      existing.category = category;
-      existing.count++;
-      existing.lastUpdated = new Date();
-    } else {
-      learnedMappings.value.push({
-        description: normalized,
-        category,
-        count: 1,
-        lastUpdated: new Date(),
-      });
-    }
-  };
-
-  // Export learned mappings (for sharing with other users later)
-  const exportLearnedMappings = (): LearnedMapping[] => {
-    return learnedMappings.value
-      .filter((m) => m.count >= 2) // Only export if used at least twice
-      .map((m) => ({ ...m }));
-  };
-
-  // Import learned mappings (merge with existing)
-  const importLearnedMappings = (imported: LearnedMapping[]) => {
-    imported.forEach((imp) => {
-      const existing = learnedMappings.value.find(
-        (m) => m.description === imp.description
+  // Auto-categorize transaction using ML model
+  function autoCategorize(transaction: Transaction): Category {
+    // Try ML model - if confident, use it
+    const mlPrediction = ml.predict(transaction);
+    if (mlPrediction && mlPrediction.confidence > 0.6) {
+      return mlPrediction.category as Category;
+    } else if (mlPrediction) {
+      console.log(
+        `ML prediction for "${
+          transaction.description
+        }" not confident enough (${(mlPrediction.confidence * 100).toFixed(
+          0
+        )}%)`
       );
-      if (!existing) {
-        learnedMappings.value.push({ ...imp, lastUpdated: new Date() });
-      } else if (imp.count > existing.count) {
-        // Only override if imported has more confidence
-        existing.category = imp.category;
-        existing.count = imp.count;
-        existing.lastUpdated = new Date();
-      }
-    });
-  };
+    }
 
-  // Auto-categorize transaction using learned mappings
-  const autoCategorize = (description: string): Category => {
-    return categorizeTransaction(description, learnedMappings.value);
-  };
+    // Not confident? Mark as 'other' for user to review
+    return 'other';
+  }
 
   // Add transaction
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
+  function addTransaction(transaction: Omit<Transaction, 'id'>) {
     const newTransaction: Transaction = {
       ...transaction,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     };
     transactions.value.push(newTransaction);
 
     // Refresh recurring patterns after adding transaction
     refreshRecurringPatterns();
-  };
+  }
 
   // Add multiple transactions (for CSV import)
-  const addTransactions = (newTransactions: Omit<Transaction, 'id'>[]) => {
+  function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
     const withIds = newTransactions.map((t) => ({
       ...t,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     }));
     transactions.value.push(...withIds);
 
+    // Train ML model ONLY on non-'other' transactions
+    const trainingSamples = transactions.value.filter(
+      (t) => t.category !== 'other'
+    );
+
+    if (trainingSamples.length > 0) {
+      ml.train(trainingSamples);
+    }
+
     // Refresh recurring patterns after bulk import
     refreshRecurringPatterns();
-  };
+  }
 
-  // Update transaction category (for learning)
-  const updateTransactionCategory = (
+  // Update transaction category (trains ML model automatically)
+  function updateTransactionCategory(
     id: string,
     category: Category,
     shouldLearn = true
-  ) => {
+  ) {
     const transaction = transactions.value.find((t) => t.id === id);
     if (!transaction) return;
 
-    // Learn from manual correction
-    if (shouldLearn && transaction.category !== category) {
-      learnMapping(transaction.description, category);
+    // Train ML model on user corrections (skip if setting to 'other')
+    if (
+      shouldLearn &&
+      transaction.category !== category &&
+      category !== 'other'
+    ) {
+      ml.trainSample({ ...transaction, category });
     }
 
     transactions.value = transactions.value.map((t) =>
       t.id === id ? { ...t, category } : t
     );
-  };
+  }
 
   // Delete transaction
   const deleteTransaction = (id: string) => {
@@ -429,8 +391,6 @@ export const useTransactions = () => {
     detectRecurringPayments,
     refreshRecurringPatterns,
     generateInsights,
-    learnedMappings,
-    exportLearnedMappings,
-    importLearnedMappings,
+    predictCategory: ml.predict,
   };
-};
+}

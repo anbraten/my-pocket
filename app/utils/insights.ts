@@ -1,5 +1,6 @@
-import type { Transaction, Category } from '~/types';
-import { differenceInMonths, startOfMonth, endOfMonth } from 'date-fns';
+import type { Transaction } from '~/types';
+import { type Category } from '~/utils/categories';
+import { differenceInMonths, startOfMonth } from 'date-fns';
 
 export interface InsightMessage {
   id: string;

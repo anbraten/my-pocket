@@ -18,7 +18,7 @@ export const CURRENCY_OPTIONS: CurrencyOption[] = [
   { value: 'EUR', label: 'Euro', symbol: '€' },
 ];
 
-export const useCurrency = () => {
+export function useCurrency() {
   const currency = useLocalStorage<SupportedCurrency>('currency', 'USD');
 
   const locale = computed(() => CURRENCY_LOCALES[currency.value]);
@@ -30,10 +30,10 @@ export const useCurrency = () => {
       })
   );
 
-  const formatCurrency = (
+  function formatCurrency(
     value: number,
     options?: Intl.NumberFormatOptions
-  ): string => {
+  ): string {
     if (!options) return formatter.value.format(value);
 
     return new Intl.NumberFormat(locale.value, {
@@ -41,11 +41,11 @@ export const useCurrency = () => {
       currency: currency.value,
       ...options,
     }).format(value);
-  };
+  }
 
   return {
     currency,
     formatCurrency,
     currencyOptions: CURRENCY_OPTIONS,
   };
-};
+}

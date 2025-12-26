@@ -167,7 +167,7 @@ export const parseAmount = (amountStr: string): number => {
 export const csvToTransactions = (
   rows: CSVRow[],
   parserNamer: string,
-  categorize: (description: string) => any
+  categorize: (transaction: Transaction) => any
 ): Omit<Transaction, 'id'>[] => {
   const parser = BANK_PARSERS[parserNamer];
   if (!parser) {
@@ -210,7 +210,13 @@ export const csvToTransactions = (
         ? parser.parseAmount(amountStr)
         : parseAmount(amountStr);
 
-      const category = categorize(description);
+      const category = categorize({
+        id: '',
+        date: date || new Date(),
+        amount,
+        description,
+        category: 'other',
+      });
 
       // Extract merchant name from first line or first few words
       const firstLine = description.split('\n')[0] || description;

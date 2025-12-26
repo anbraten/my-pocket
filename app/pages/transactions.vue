@@ -241,8 +241,7 @@
 
 <script setup lang="ts">
 import { format } from 'date-fns';
-import { CATEGORIES } from '~/utils/categories';
-import type { Category } from '~/types';
+import { CATEGORIES, type Category } from '~/utils/categories';
 
 const showAddTransaction = ref(false);
 

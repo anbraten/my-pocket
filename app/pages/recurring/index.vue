@@ -204,8 +204,8 @@ import {
   isPast,
   isToday,
 } from 'date-fns';
-import { CATEGORIES } from '~/utils/categories';
-import type { RecurringPayment, Category } from '~/types';
+import { CATEGORIES, type Category } from '~/utils/categories';
+import type { RecurringPayment } from '~/types';
 
 const { detectRecurringPayments, refreshRecurringPatterns } = useTransactions();
 

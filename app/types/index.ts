@@ -1,16 +1,4 @@
-export type Category =
-  | 'housing'
-  | 'livelihood'
-  | 'groceries'
-  | 'leisure'
-  | 'shopping'
-  | 'transportation'
-  | 'savings'
-  | 'travel'
-  | 'health'
-  | 'education'
-  | 'income'
-  | 'other';
+import { type Category } from '~/utils/categories';
 
 export interface Transaction {
   id: string;
@@ -18,6 +6,8 @@ export interface Transaction {
   amount: number;
   description: string;
   category: Category;
+
+  // TODO: drop?
   merchant?: string;
   isRecurring?: boolean;
   isAnomaly?: boolean;

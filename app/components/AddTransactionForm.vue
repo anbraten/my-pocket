@@ -74,8 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { CATEGORIES } from '~/utils/categories';
-import type { Category } from '~/types';
+import { CATEGORIES, type Category } from '~/utils/categories';
 import { CURRENCY_OPTIONS } from '~/composables/useCurrency';
 
 const emit = defineEmits<{
@@ -108,14 +107,15 @@ const form = reactive({
   isExpense: true,
 });
 
-watch(
-  () => form.description,
-  (newDesc) => {
-    if (newDesc.length > 3) {
-      form.category = categorizeTransaction(newDesc);
-    }
+watch([form.description], (newDesc) => {
+  if (newDesc.length > 3) {
+    form.category = categorizeTransaction({
+      ...form,
+      date: new Date(form.date!),
+      id: '',
+    });
   }
-);
+});
 
 const handleSubmit = () => {
   const amount = form.isExpense

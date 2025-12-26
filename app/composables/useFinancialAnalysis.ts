@@ -1,5 +1,6 @@
 import { endOfMonth, startOfMonth, differenceInDays } from 'date-fns';
-import type { Transaction, Category, RecurringPayment } from '~/types';
+import type { Transaction, RecurringPayment } from '~/types';
+import type { Category } from '~/utils/categories';
 
 export interface FinancialInsight {
   id: string;
@@ -37,7 +38,7 @@ export interface AnomalyDetection {
   description: string;
 }
 
-export const useFinancialAnalysis = () => {
+export function useFinancialAnalysis() {
   const { monthlyExpenses, monthlyIncome, detectRecurringPayments } =
     useTransactions();
 
@@ -138,9 +139,8 @@ export const useFinancialAnalysis = () => {
 
     // Get recurring income to use as the budget baseline
     const recurringIncome = payments.filter((p) => p.amount > 0);
-    const recurringExpenses = payments.filter((p) => p.amount < 0);
 
-    const normalizeToMonthly = (payment: RecurringPayment) => {
+    function normalizeToMonthly(payment: RecurringPayment): number {
       const baseAmount = (() => {
         if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
         if (payment.frequency === 'yearly') return payment.amount / 12;
@@ -148,7 +148,7 @@ export const useFinancialAnalysis = () => {
       })();
       // Return absolute value for all amounts
       return Math.abs(baseAmount);
-    };
+    }
 
     // Calculate total recurring income
     const totalRecurringIncome = recurringIncome.reduce(
@@ -181,7 +181,7 @@ export const useFinancialAnalysis = () => {
 
     // Find cancellation candidates (non-essential, expensive expenses only)
     const cancellationCandidates = expenseRecurringData
-      .filter((s) => !s.isEssential && s.category === 'entertainment')
+      .filter((s) => !s.isEssential && s.category === 'leisure')
       .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
       .slice(0, 3);
 
@@ -344,7 +344,7 @@ export const useFinancialAnalysis = () => {
           id: 'subscription-review',
           type: 'subscription',
           severity: 'info',
-          title: '📱 Review entertainment expenses',
+          title: '📱 Review leisure expenses',
           description: `${
             topCandidate.merchant
           } costs ${topCandidate.monthlyAmount.toFixed(0)}/mo. You have ${
@@ -354,7 +354,7 @@ export const useFinancialAnalysis = () => {
             0
           )}/mo`,
           amount: subs.potentialSavings,
-          category: 'entertainment',
+          category: 'leisure',
         });
       }
     }
@@ -426,4 +426,4 @@ export const useFinancialAnalysis = () => {
     generateConsultantInsights,
     workProgress,
   };
-};
+}
