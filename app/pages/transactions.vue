@@ -135,9 +135,14 @@
           :key="transaction.id"
           class="p-4 flex items-start gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
         >
-          <div class="text-3xl mt-1">
-            {{ CATEGORIES[transaction.category]?.icon }}
-          </div>
+          <TransactionLogo
+            :name="
+              transaction.merchant || getFirstLine(transaction.description)
+            "
+            :fallback="CATEGORIES[transaction.category]?.icon"
+            size="md"
+            class="mt-1"
+          />
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <p

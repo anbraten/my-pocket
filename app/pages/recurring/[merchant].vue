@@ -19,13 +19,21 @@
           />
         </svg>
       </NuxtLink>
-      <div>
-        <p class="text-xs text-neutral-600 dark:text-neutral-400">
-          Back to recurring
-        </p>
-        <h1 class="text-2xl font-semibold text-black dark:text-white">
-          {{ merchantName }}
-        </h1>
+      <div class="flex items-center gap-3">
+        <TransactionLogo
+          v-if="recurringPayment"
+          :name="merchantName"
+          :fallback="CATEGORIES[recurringPayment.category]?.icon"
+          size="md"
+        />
+        <div>
+          <p class="text-xs text-neutral-600 dark:text-neutral-400">
+            Back to recurring
+          </p>
+          <h1 class="text-2xl font-semibold text-black dark:text-white">
+            {{ merchantName }}
+          </h1>
+        </div>
       </div>
     </div>
 

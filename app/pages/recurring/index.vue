@@ -92,7 +92,11 @@
           class="py-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors px-2 -mx-2"
           @click="showTransactions(payment)"
         >
-          <div class="text-3xl">{{ CATEGORIES[payment.category]?.icon }}</div>
+          <TransactionLogo
+            :name="payment.merchant"
+            :fallback="CATEGORIES[payment.category]?.icon"
+            size="md"
+          />
           <div class="flex-1">
             <div class="flex items-center gap-2">
               <p class="font-medium text-black dark:text-white">

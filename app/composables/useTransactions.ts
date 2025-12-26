@@ -70,7 +70,20 @@ export function useTransactions() {
 
   // Add multiple transactions (for CSV import)
   function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
-    const withIds = newTransactions.map((t) => ({
+    const existingSignatures = new Set(
+      transactions.value.map(
+        (t) => `${t.date.toISOString()}|${t.amount}|${t.description}`
+      )
+    );
+
+    const uniqueNewTransactions = newTransactions.filter((t) => {
+      const signature = `${t.date.toISOString()}|${t.amount}|${t.description}`;
+      return !existingSignatures.has(signature);
+    });
+
+    if (uniqueNewTransactions.length === 0) return 0;
+
+    const withIds = uniqueNewTransactions.map((t) => ({
       ...t,
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     }));
@@ -87,6 +100,8 @@ export function useTransactions() {
 
     // Refresh recurring patterns after bulk import
     refreshRecurringPatterns();
+
+    return uniqueNewTransactions.length;
   }
 
   // Update transaction category (trains ML model automatically)

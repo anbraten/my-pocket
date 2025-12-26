@@ -223,9 +223,11 @@
             class="flex items-center justify-between py-2"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span class="text-lg">{{
-                CATEGORIES[payment.category]?.icon
-              }}</span>
+              <TransactionLogo
+                :name="payment.merchant"
+                :fallback="CATEGORIES[payment.category]?.icon"
+                size="sm"
+              />
               <span class="text-sm truncate text-black dark:text-white">
                 {{ payment.merchant }}
               </span>

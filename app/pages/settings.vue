@@ -299,8 +299,8 @@ const handleFileUpload = async (event: Event) => {
 
     console.log('Parsed transactions:', { newTransactions, parserName, rows });
 
-    addTransactions(newTransactions);
-    importedCount.value = newTransactions.length;
+    const addedCount = addTransactions(newTransactions);
+    importedCount.value = addedCount;
     importSuccess.value = true;
 
     setTimeout(() => {
