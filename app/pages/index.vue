@@ -386,9 +386,7 @@ const discretionarySpent = computed(() => {
 
   // Filter out transactions that match recurring merchants
   const nonRecurringExpenses = monthlyExpenses.value.filter((t) => {
-    const merchant = (t.merchant ?? t.description.split(' ')[0] ?? '')
-      .toLowerCase()
-      .trim();
+    const merchant = (t.description.split('\n')[0] ?? '').toLowerCase().trim();
     // Check if this merchant is in our recurring list (fuzzy match would be more accurate but this is simpler)
     return !Array.from(recurringMerchants).some(
       (rm) => merchant.includes(rm) || rm.includes(merchant)

@@ -285,7 +285,7 @@ const sortedRecurring = computed(() => {
   if (!recurringPayments.value.length) return [];
 
   return [...recurringPayments.value]
-    .filter((payment) => payment.nextExpectedDate && payment.confidence >= 0.3)
+    .filter((payment) => payment.nextExpectedDate)
     .sort(
       (a, b) =>
         (a.nextExpectedDate as Date).getTime() -

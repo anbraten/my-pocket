@@ -3,17 +3,16 @@
     <!-- Month Selector & Stats -->
     <UiCard>
       <div class="flex items-center justify-between mb-6">
-        <button
-          @click="previousMonth"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors text-sm font-medium"
+        <UiButton
           :disabled="!canGoPrevious"
           :class="{
             'opacity-40 cursor-not-allowed pointer-events-none': !canGoPrevious,
           }"
+          @click="previousMonth"
         >
           <span class="text-xl">←</span>
           <span class="hidden sm:inline">Previous</span>
-        </button>
+        </UiButton>
         <div class="text-center">
           <h1 class="text-2xl font-bold text-black dark:text-white">
             {{ selectedMonthLabel }}
@@ -26,17 +25,16 @@
             Jump to current month
           </button>
         </div>
-        <button
-          @click="nextMonth"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors text-sm font-medium"
+        <UiButton
           :disabled="!canGoNext"
           :class="{
             'opacity-40 cursor-not-allowed pointer-events-none': !canGoNext,
           }"
+          @click="nextMonth"
         >
           <span class="hidden sm:inline">Next</span>
           <span class="text-xl">→</span>
-        </button>
+        </UiButton>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -136,9 +134,7 @@
           class="p-4 flex items-start gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
         >
           <TransactionLogo
-            :name="
-              transaction.merchant || getFirstLine(transaction.description)
-            "
+            :name="getFirstLine(transaction.description)"
             :fallback="CATEGORIES[transaction.category]?.icon"
             size="md"
             class="mt-1"
@@ -155,11 +151,6 @@
                 v-if="isRecurring(transaction)"
                 class="text-xs bg-amber-400/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-400/30 font-medium"
                 >Recurring</span
-              >
-              <span
-                v-if="transaction.isAnomaly"
-                class="text-xs bg-orange-500/20 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded"
-                >Anomaly</span
               >
             </div>
             <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
@@ -318,11 +309,7 @@ const recurringPayments = computed(() => detectRecurringPayments());
 
 // Check if a transaction is recurring
 const isRecurring = (transaction: (typeof transactions.value)[0]) => {
-  const merchant = (
-    transaction.merchant ??
-    transaction.description.split(' ')[0] ??
-    ''
-  )
+  const merchant = (transaction.description.split('\n')[0] ?? '')
     .toLowerCase()
     .trim();
 

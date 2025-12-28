@@ -13,9 +13,11 @@ import {
   generateCategoryInsights,
 } from '~/utils/insights';
 import { useCategoryML } from '~/composables/useCategoryML';
+import { RecurringModel } from './recurring/model';
 
 export function useTransactions() {
-  const ml = useCategoryML();
+  const mlCategory = useCategoryML();
+  const mlRecurring = new RecurringModel();
 
   const transactions = useLocalStorage<Transaction[]>(
     'my-pocket:transactions',
@@ -39,7 +41,7 @@ export function useTransactions() {
   // Auto-categorize transaction using ML model
   function autoCategorize(transaction: Transaction): Category {
     // Try ML model - if confident, use it
-    const mlPrediction = ml.predict(transaction);
+    const mlPrediction = mlCategory.predict(transaction);
     if (mlPrediction && mlPrediction.confidence > 0.6) {
       return mlPrediction.category as Category;
     } else if (mlPrediction) {
@@ -56,16 +58,19 @@ export function useTransactions() {
     return 'other';
   }
 
+  function generateId() {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
   // Add transaction
   function addTransaction(transaction: Omit<Transaction, 'id'>) {
+    const id = generateId();
     const newTransaction: Transaction = {
       ...transaction,
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      id,
+      isRecurring: mlRecurring.predict({ ...transaction, id }) > 0.5,
     };
     transactions.value.push(newTransaction);
-
-    // Refresh recurring patterns after adding transaction
-    refreshRecurringPatterns();
   }
 
   // Add multiple transactions (for CSV import)
@@ -83,10 +88,15 @@ export function useTransactions() {
 
     if (uniqueNewTransactions.length === 0) return 0;
 
-    const withIds = uniqueNewTransactions.map((t) => ({
-      ...t,
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    }));
+    const withIds = uniqueNewTransactions.map((t) => {
+      const id = generateId();
+
+      return {
+        ...t,
+        id,
+        isRecurring: mlRecurring.predict({ ...t, id }) > 0.5,
+      };
+    });
     transactions.value.push(...withIds);
 
     // Train ML model ONLY on non-'other' transactions
@@ -95,11 +105,8 @@ export function useTransactions() {
     );
 
     if (trainingSamples.length > 0) {
-      ml.train(trainingSamples);
+      mlCategory.train(trainingSamples);
     }
-
-    // Refresh recurring patterns after bulk import
-    refreshRecurringPatterns();
 
     return uniqueNewTransactions.length;
   }
@@ -119,7 +126,7 @@ export function useTransactions() {
       transaction.category !== category &&
       category !== 'other'
     ) {
-      ml.trainSample({ ...transaction, category });
+      mlCategory.trainSample({ ...transaction, category });
     }
 
     transactions.value = transactions.value.map((t) =>
@@ -232,9 +239,9 @@ export function useTransactions() {
   const detectRecurringPayments = (
     forceRefresh = false
   ): RecurringPayment[] => {
-    if (!forceRefresh && cachedRecurring.value.length > 0) {
-      return cachedRecurring.value;
-    }
+    // if (!forceRefresh && cachedRecurring.value.length > 0) {
+    //   return cachedRecurring.value;
+    // }
 
     const recurring: RecurringPayment[] = [];
 
@@ -242,7 +249,7 @@ export function useTransactions() {
     const merchantGroups: Record<string, Transaction[]> = {};
 
     for (const t of transactions.value) {
-      const merchant = t.merchant ?? t.description.split(' ')[0] ?? '';
+      const merchant = t.description.split('\n')[0] ?? '';
       const normalizedMerchant = merchant.toLowerCase().trim();
 
       // Try to find similar existing merchant (fuzzy matching)
@@ -264,52 +271,37 @@ export function useTransactions() {
 
     // Analyze each merchant group
     for (const [merchant, groupTxns] of Object.entries(merchantGroups)) {
+      if (groupTxns.length < 2) continue;
+
       const firstTxn = groupTxns[0];
       if (!firstTxn) continue;
 
       // Sort by date
-      const sorted = groupTxns.sort(
+      const sortedTransactions = groupTxns.sort(
         (a, b) => a.date.getTime() - b.date.getTime()
       );
 
       // Calculate intervals between transactions (in days)
       const intervals: number[] = [];
-      for (let i = 1; i < sorted.length; i++) {
-        const curr = sorted[i];
-        const prev = sorted[i - 1];
+      for (let i = 1; i < sortedTransactions.length; i++) {
+        const curr = sortedTransactions[i];
+        const prev = sortedTransactions[i - 1];
         if (!curr || !prev) continue;
         const daysDiff =
           (curr.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
         intervals.push(daysDiff);
       }
 
-      if (intervals.length === 0) continue;
-
       const avgInterval =
         intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
 
-      // Calculate coefficient of variation for intervals
-      const intervalStdDev = Math.sqrt(
-        intervals.reduce((s, i) => s + Math.pow(i - avgInterval, 2), 0) /
-          intervals.length
-      );
-      const intervalCV = intervalStdDev / avgInterval;
-
       // Check amount consistency
-      const amounts = sorted.map((t) => t.amount);
+      const amounts = sortedTransactions.map((t) => t.amount);
       const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
       const amountStdDev = Math.sqrt(
         amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) /
           amounts.length
       );
-      const amountCV = amountStdDev / Math.abs(avgAmount);
-
-      // Determine if it's recurring based on consistency thresholds
-      // More lenient thresholds: allow up to 40% variation in intervals, 30% in amounts
-      const isIntervalConsistent = intervalCV < 0.4;
-      const isAmountConsistent = amountCV < 0.3;
-
-      if (!isIntervalConsistent || !isAmountConsistent) continue;
 
       // Determine frequency based on average interval
       let frequency: 'weekly' | 'monthly' | 'yearly' | 'daily' | 'one-time';
@@ -318,23 +310,23 @@ export function useTransactions() {
       else if (avgInterval <= 45) frequency = 'monthly';
       else frequency = 'yearly';
 
-      const lastTxn = sorted[sorted.length - 1];
+      const lastTxn = sortedTransactions[sortedTransactions.length - 1];
       if (!lastTxn) continue;
 
       // Use the most recent merchant name
-      const displayMerchant = lastTxn.merchant ?? merchant;
+      const displayMerchant = lastTxn.description.split('\n')[0] ?? merchant;
 
-      // Calculate confidence score (0-1)
-      // Based on: count (40%), interval consistency (40%), amount consistency (20%)
-      const countScore = Math.min(sorted.length / 12, 1); // Max at 12 occurrences
-      const intervalScore = Math.max(0, 1 - intervalCV); // Lower CV = higher score
-      const amountScore = Math.max(0, 1 - amountCV); // Lower CV = higher score
+      const confidence = mlRecurring.predict({
+        amount: avgAmount,
+        frequency,
+        intervals,
+        count: sortedTransactions.length,
+        merchant: displayMerchant,
+        amountStdDev,
+        lastDate: lastTxn.date.toISOString(),
+      });
 
-      const confidence =
-        countScore * 0.4 + intervalScore * 0.4 + amountScore * 0.2;
-
-      // Only include if confidence is above 0.5 (50%)
-      if (confidence < 0.5) continue;
+      if (confidence < 0.3) continue;
 
       recurring.push({
         merchant: displayMerchant,
@@ -346,8 +338,8 @@ export function useTransactions() {
           lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000
         ),
         intervals,
-        count: sorted.length,
-        confidence: Math.min(0.99, confidence), // Cap at 99%
+        count: sortedTransactions.length,
+        confidence: Math.min(1.0, confidence), // Cap at 100%
         amountStdDev,
       });
     }
@@ -406,6 +398,5 @@ export function useTransactions() {
     detectRecurringPayments,
     refreshRecurringPatterns,
     generateInsights,
-    predictCategory: ml.predict,
   };
 }

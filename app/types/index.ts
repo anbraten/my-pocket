@@ -6,12 +6,7 @@ export interface Transaction {
   amount: number;
   description: string;
   category: Category;
-
-  // TODO: drop?
-  merchant?: string;
   isRecurring?: boolean;
-  isAnomaly?: boolean;
-  tags?: string[];
 }
 
 export interface CategoryStats {

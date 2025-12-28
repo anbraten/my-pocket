@@ -108,39 +108,39 @@ async function fetchLogo() {
     return;
   }
 
-  try {
-    // Using DuckDuckGo Instant Answer API
-    // This is free, requires no key, and provides images (often from Wikipedia/Infoboxes)
-    const searchDDG = async (query: string) => {
-      const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(
-        query
-      )}&format=json&t=my-pocket&no_redirect=1&no_html=1`;
-      return fetch(url).then((r) => r.json());
-    };
+  // try {
+  //   // Using DuckDuckGo Instant Answer API
+  //   // This is free, requires no key, and provides images (often from Wikipedia/Infoboxes)
+  //   const searchDDG = async (query: string) => {
+  //     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(
+  //       query
+  //     )}&format=json&t=my-pocket&no_redirect=1&no_html=1`;
+  //     return fetch(url).then((r) => r.json());
+  //   };
 
-    let data = await searchDDG(cleanName);
+  //   let data = await searchDDG(cleanName);
 
-    // Fallback: Try first word if no image found
-    if (!data.Image && cleanName.includes(' ')) {
-      const firstWord = cleanName.split(' ')[0];
-      if (firstWord.length > 2) {
-        data = await searchDDG(firstWord);
-      }
-    }
+  //   // Fallback: Try first word if no image found
+  //   if (!data.Image && cleanName.includes(' ')) {
+  //     const firstWord = cleanName.split(' ')[0];
+  //     if (firstWord.length > 2) {
+  //       data = await searchDDG(firstWord);
+  //     }
+  //   }
 
-    if (data.Image) {
-      // DDG returns relative paths for images
-      const imageUrl = `https://duckduckgo.com${data.Image}`;
-      logoUrl.value = imageUrl;
-      logoCache.set(cacheKey, imageUrl);
-      saveCache();
-    } else {
-      logoUrl.value = null;
-      logoCache.set(cacheKey, null);
-    }
-  } catch (e) {
-    console.error('Error fetching logo:', e);
-    logoUrl.value = null;
-  }
+  //   if (data.Image) {
+  //     // DDG returns relative paths for images
+  //     const imageUrl = `https://duckduckgo.com${data.Image}`;
+  //     logoUrl.value = imageUrl;
+  //     logoCache.set(cacheKey, imageUrl);
+  //     saveCache();
+  //   } else {
+  //     logoUrl.value = null;
+  //     logoCache.set(cacheKey, null);
+  //   }
+  // } catch (e) {
+  //   console.error('Error fetching logo:', e);
+  //   logoUrl.value = null;
+  // }
 }
 </script>

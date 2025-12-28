@@ -191,11 +191,7 @@ const relatedTransactions = computed((): Transaction[] => {
 
   return allTransactions.value
     .filter((t) => {
-      const transactionMerchant = (
-        t.merchant ??
-        t.description.split(' ')[0] ??
-        ''
-      )
+      const transactionMerchant = (t.description.split('\n')[0] ?? '')
         .toLowerCase()
         .trim();
 
