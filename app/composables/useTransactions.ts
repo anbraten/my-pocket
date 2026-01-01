@@ -246,11 +246,16 @@ export function useTransactions() {
     const recurring: RecurringPayment[] = [];
 
     // Group by merchant/description with fuzzy matching
-    const merchantGroups: Record<string, Transaction[]> = {};
+    const merchantGroups = new Map<string, Transaction[]>();
 
     for (const t of transactions.value) {
       const merchant = t.description.split('\n')[0] ?? '';
-      const normalizedMerchant = merchant.toLowerCase().trim();
+      const normalizedMerchant = merchant
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim();
+
+      const amountRounded = Math.round(Math.abs(t.amount) * 100) / 100;
 
       // Try to find similar existing merchant (fuzzy matching)
       let matchedMerchant = normalizedMerchant;
@@ -263,14 +268,16 @@ export function useTransactions() {
         }
       }
 
-      if (!merchantGroups[matchedMerchant]) {
-        merchantGroups[matchedMerchant] = [];
+      const key = `${matchedMerchant}|${amountRounded}`;
+
+      if (!merchantGroups.has(key)) {
+        merchantGroups.set(key, []);
       }
-      merchantGroups[matchedMerchant]!.push(t);
+      merchantGroups.get(key)!.push(t);
     }
 
     // Analyze each merchant group
-    for (const [merchant, groupTxns] of Object.entries(merchantGroups)) {
+    for (const [merchant, groupTxns] of merchantGroups.entries()) {
       if (groupTxns.length < 2) continue;
 
       const firstTxn = groupTxns[0];
