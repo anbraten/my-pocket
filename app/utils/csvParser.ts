@@ -3,6 +3,8 @@ import { parseISO, parse, isValid } from 'date-fns';
 import type { Transaction } from '~/types';
 import { comdirectParser } from './parser/comdirect';
 import type { BankParser } from './parser';
+import { spardaParser } from './parser/sparda';
+import { dkbParser } from './parser/dbk';
 
 export interface CSVRow {
   [key: string]: string;
@@ -16,6 +18,8 @@ export const BANK_PARSERS: Record<string, BankParser> = {
     hasHeader: true,
   },
   comdirect: comdirectParser,
+  dbk: dkbParser,
+  sparda: spardaParser,
 };
 
 export const parseCSV = (

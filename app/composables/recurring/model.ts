@@ -37,12 +37,12 @@ const featureSet = {
 type FeatureSet = typeof featureSet;
 
 const preTrainedModel: Model = {
-  bias: -0.21474296228317916,
+  bias: -0.8311996191067905,
   weights: [
-    -0.02728812956961798, -0.04601961463403138, -0.8482199475257722,
-    -0.9419660525586633, -1.152710019183471, 0.14356002903336976,
-    0.2831320163569497, -0.34091675969344276, -0.6668006832436886,
-    -0.5808995442642052, 0.5236897058886162,
+    0.13070504388478021, -0.05618234133847903, -0.6298417015221216,
+    -0.6294349088909538, -0.14326639523111168, 0.20906514001686582,
+    0.2967858956092421, -0.9294600793945318, -0.778318858463863,
+    -0.46184577583956293, 0.7978012010873499,
   ],
 };
 
@@ -80,10 +80,12 @@ export class RecurringModel {
           )
         : 0;
 
-    const amountCV =
-      transaction.amountStdDev && Math.abs(amount) > 0
-        ? transaction.amountStdDev / Math.abs(amount)
-        : 0;
+    // Relative amount variance: the same € deviation matters more for small
+    // recurring transactions than for large ones.
+    const amountMagnitude = Math.max(Math.abs(amount), 1); // stabilize near 0€
+    const amountCV = transaction.amountStdDev
+      ? transaction.amountStdDev / amountMagnitude
+      : 0;
 
     const daysSinceLastTransaction = transaction.lastDate
       ? Math.floor(

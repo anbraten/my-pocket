@@ -68,7 +68,6 @@ export function useTransactions() {
     const newTransaction: Transaction = {
       ...transaction,
       id,
-      isRecurring: mlRecurring.predict({ ...transaction, id }) > 0.5,
     };
     transactions.value.push(newTransaction);
   }
@@ -94,7 +93,6 @@ export function useTransactions() {
       return {
         ...t,
         id,
-        isRecurring: mlRecurring.predict({ ...t, id }) > 0.5,
       };
     });
     transactions.value.push(...withIds);
@@ -248,19 +246,56 @@ export function useTransactions() {
     // Group by merchant/description with fuzzy matching
     const merchantGroups = new Map<string, Transaction[]>();
 
+    const clamp = (value: number, min: number, max: number) =>
+      Math.max(min, Math.min(max, value));
+
+    // Rounds to 1/2/5 * 10^n steps ("nice" human-ish bucket sizes)
+    const niceStep = (raw: number) => {
+      if (!Number.isFinite(raw) || raw <= 0) return 1;
+      const exponent = Math.pow(10, Math.floor(Math.log10(raw)));
+      const fraction = raw / exponent;
+      const niceFraction =
+        fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+      return niceFraction * exponent;
+    };
+
+    const getAmountBucket = (amountAbs: number) => {
+      if (!Number.isFinite(amountAbs) || amountAbs <= 0) return 0;
+
+      // Relative tolerance: scales with the magnitude.
+      // Example: ~€45 bucket step for €3000 (1.5%), ~€0.25–€0.5 for small amounts.
+      const rawStep = amountAbs * 0.015;
+      const step = clamp(niceStep(rawStep), 0.25, 100);
+      const bucket = Math.round(amountAbs / step) * step;
+
+      // Avoid floating-point artifacts in Map keys.
+      return Number(bucket.toFixed(2));
+    };
+
     for (const t of transactions.value) {
-      const merchant = t.description.split('\n')[0] ?? '';
-      const normalizedMerchant = merchant
+      const description = t.description ?? '';
+      const normalizedDescription = description
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
         .trim();
 
-      const amountRounded = Math.round(Math.abs(t.amount) * 100) / 100;
+      // const amountRounded = Math.round(
+      //   Math.sign(t.amount) * Math.exp(Math.round(Math.log(Math.abs(t.amount))))
+      // );
+
+      // Amount bucketing that scales with amount magnitude
+      const absAmount = Math.abs(t.amount);
+      const amountBucket = getAmountBucket(absAmount);
 
       // Try to find similar existing merchant (fuzzy matching)
-      let matchedMerchant = normalizedMerchant;
-      for (const existingMerchant of Object.keys(merchantGroups)) {
-        const similarity = getSimilarity(normalizedMerchant, existingMerchant);
+      let matchedMerchant = normalizedDescription;
+      for (const existingKey of merchantGroups.keys()) {
+        const existingMerchant = existingKey.split('|')[0] ?? '';
+        if (!existingMerchant) continue;
+        const similarity = getSimilarity(
+          normalizedDescription,
+          existingMerchant
+        );
         // If similarity is above 80%, consider them the same merchant
         if (similarity > 0.8) {
           matchedMerchant = existingMerchant;
@@ -268,7 +303,7 @@ export function useTransactions() {
         }
       }
 
-      const key = `${matchedMerchant}|${amountRounded}`;
+      const key = `${matchedMerchant}|${amountBucket}`;
 
       if (!merchantGroups.has(key)) {
         merchantGroups.set(key, []);
@@ -333,7 +368,7 @@ export function useTransactions() {
         lastDate: lastTxn.date.toISOString(),
       });
 
-      if (confidence < 0.3) continue;
+      if (confidence < 0.2) continue;
 
       recurring.push({
         merchant: displayMerchant,
@@ -350,6 +385,13 @@ export function useTransactions() {
         amountStdDev,
       });
     }
+
+    console.log(
+      recurring.map((r) => ({
+        ...r,
+        recurring: r.confidence > 0.5,
+      }))
+    );
 
     // Sort by absolute amount (largest first)
     const sortedRecurring = recurring.sort(
