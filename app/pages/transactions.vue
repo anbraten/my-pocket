@@ -75,7 +75,7 @@
 
     <!-- Filters -->
     <UiCard v-if="showFilters">
-      <div class="grid md:grid-cols-2 gap-4">
+      <div class="grid md:grid-cols-3 gap-4">
         <div>
           <label
             class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2 block"
@@ -98,6 +98,18 @@
             v-model="filterType"
             :options="typeOptions"
             placeholder="All transactions"
+          />
+        </div>
+        <div v-if="accounts.length > 0">
+          <label
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2 block"
+          >
+            Account
+          </label>
+          <UiSelect
+            v-model="filterAccount"
+            :options="accountFilterOptions"
+            placeholder="All accounts"
           />
         </div>
       </div>
@@ -144,6 +156,18 @@
                 class="text-[10px] bg-violet-100 dark:bg-violet-400/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
                 >Recurring</span
               >
+              <span
+                v-if="transaction.isTransfer"
+                class="text-[10px] bg-sky-100 dark:bg-sky-400/10 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
+                >Transfer</span
+              >
+              <span
+                v-if="getAccount(transaction.accountId)"
+                class="text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
+                :style="{ backgroundColor: getAccount(transaction.accountId)!.color + '22', color: getAccount(transaction.accountId)!.color }"
+              >
+                {{ getAccount(transaction.accountId)!.name }}
+              </span>
             </div>
             <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
               {{ formatDate(transaction.date) }}
@@ -239,6 +263,8 @@ const {
   getOldestTransactionDate,
 } = useTransactions();
 
+const { accounts, accountOptions, getAccount } = useAccounts();
+
 const { formatCurrency } = useCurrency();
 const { getSimilarity } = await import('~/utils/stringUtils');
 
@@ -247,6 +273,12 @@ const getFirstLine = (text: string) => text.split('\n')[0] || text;
 const showFilters = ref(false);
 const filterCategory = ref('');
 const filterType = ref('');
+const filterAccount = ref('');
+
+const accountFilterOptions = computed(() => [
+  { label: 'All accounts', value: '' },
+  ...accounts.value.map((a) => ({ label: a.name, value: a.id })),
+]);
 
 // Month navigation
 const selectedMonth = ref(new Date());
@@ -352,6 +384,10 @@ const selectedMonthTransactions = computed(() => {
     filtered = filtered.filter((t) => isRecurring(t));
   } else if (filterType.value === 'variable') {
     filtered = filtered.filter((t) => !isRecurring(t));
+  }
+
+  if (filterAccount.value) {
+    filtered = filtered.filter((t) => t.accountId === filterAccount.value);
   }
 
   return [...filtered].sort((a, b) => b.date.getTime() - a.date.getTime());

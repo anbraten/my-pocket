@@ -208,6 +208,36 @@
       </UiCard>
     </div>
 
+    <!-- Accounts Overview -->
+    <UiCard v-if="accountSummaries.length > 0">
+      <div class="mb-4">
+        <p class="text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider">Accounts</p>
+        <h3 class="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1 tabular-nums">
+          {{ formatMoney(netWorth) }}
+          <span class="text-sm font-normal text-stone-500 dark:text-stone-400">net flow</span>
+        </h3>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="summary in accountSummaries"
+          :key="summary.account.id"
+          class="rounded-lg border border-stone-200 dark:border-stone-700 p-3 space-y-1"
+        >
+          <div class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full shrink-0" :style="{ backgroundColor: summary.account.color }" />
+            <p class="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">{{ summary.account.name }}</p>
+            <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 uppercase tracking-wide shrink-0">
+              {{ summary.account.type }}
+            </span>
+          </div>
+          <p class="text-lg font-bold tabular-nums" :class="summary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-stone-100'">
+            {{ formatMoney(summary.net) }}
+          </p>
+          <p class="text-xs text-stone-500 dark:text-stone-400">{{ summary.count }} transactions</p>
+        </div>
+      </div>
+    </UiCard>
+
     <!-- Insights & Reports Section -->
     <UiCard>
       <div class="mb-5">
@@ -272,6 +302,20 @@ const {
   monthlyIncome,
   detectRecurringPayments,
 } = useTransactions();
+
+const { accounts } = useAccounts();
+
+const accountSummaries = computed(() =>
+  accounts.value.map((account) => {
+    const txs = transactions.value.filter((t) => t.accountId === account.id);
+    const net = txs.reduce((sum, t) => sum + t.amount, 0);
+    return { account, net, count: txs.length };
+  }).filter((s) => s.count > 0)
+);
+
+const netWorth = computed(() =>
+  accountSummaries.value.reduce((sum, s) => sum + s.net, 0)
+);
 
 const { monthProgress, analyzeRecurring } = useFinancialAnalysis();
 

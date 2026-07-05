@@ -11,12 +11,6 @@ export interface CSVRow {
 }
 
 export const BANK_PARSERS: Record<string, BankParser> = {
-  generic: {
-    name: 'Generic CSV',
-    delimiter: ',',
-    skipFirstNLines: 0,
-    hasHeader: true,
-  },
   comdirect: comdirectParser,
   dbk: dkbParser,
   sparda: spardaParser,

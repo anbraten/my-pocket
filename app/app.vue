@@ -63,7 +63,8 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-const isActive = (path: string) => route.path === path;
+const isActive = (path: string) =>
+  path === '/' ? route.path === '/' : route.path === path || route.path.startsWith(path + '/');
 
 watch(
   () => isDark.value,

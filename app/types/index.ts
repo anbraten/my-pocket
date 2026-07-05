@@ -1,5 +1,14 @@
 import { type Category } from '~/utils/categories';
 
+export type AccountType = 'checking' | 'savings' | 'investment';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  color: string; // hex color
+}
+
 export interface Transaction {
   id: string;
   date: Date;
@@ -7,6 +16,8 @@ export interface Transaction {
   description: string;
   category: Category;
   isRecurring?: boolean;
+  accountId?: string;
+  isTransfer?: boolean;
 }
 
 export interface CategoryStats {

@@ -50,8 +50,10 @@ function getRecurringWorker(): Worker {
 
 function runRecurringWorker() {
   isComputingRecurring.value = true;
-  // Vue reactive proxies can't be structured-cloned — spread each item to a plain object.
-  const plainTransactions = transactions.value.map((t) => ({ ...t }));
+  // Exclude transfers — they're internal movements, not real recurring payments.
+  const plainTransactions = transactions.value
+    .filter((t) => !t.isTransfer)
+    .map((t) => ({ ...t }));
   getRecurringWorker().postMessage({ type: 'detect', transactions: plainTransactions });
 }
 
@@ -121,40 +123,79 @@ export function useTransactions() {
   }
 
   async function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
-    const existingSignatures = new Set(
-      transactions.value.map(
-        (t) => `${t.date.toISOString()}|${t.amount}|${t.description}`
-      )
+    const signatureMap = new Map(
+      transactions.value.map((t) => [
+        `${t.date.toISOString()}|${t.amount}|${t.description}`,
+        t,
+      ])
     );
 
-    const uniqueNewTransactions = newTransactions.filter((t) => {
-      const signature = `${t.date.toISOString()}|${t.amount}|${t.description}`;
-      return !existingSignatures.has(signature);
-    });
+    const toAdd: Omit<Transaction, 'id'>[] = [];
+    let tagged = 0;
 
-    if (uniqueNewTransactions.length === 0) return 0;
-
-    const withIds: Transaction[] = uniqueNewTransactions.map((t) => ({
-      ...t,
-      id: generateId(),
-    }));
-
-    for (let i = 0; i < withIds.length; i += CHUNK_SIZE) {
-      const chunk = withIds.slice(i, i + CHUNK_SIZE);
-      transactions.value.push(...chunk);
-      await db.transactions.bulkAdd(chunk);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    for (const t of newTransactions) {
+      const sig = `${t.date.toISOString()}|${t.amount}|${t.description}`;
+      const existing = signatureMap.get(sig);
+      if (existing) {
+        // If incoming has an accountId and the stored one doesn't, tag it now.
+        if (t.accountId && !existing.accountId) {
+          existing.accountId = t.accountId;
+          await db.transactions.update(existing.id, { accountId: t.accountId });
+          tagged++;
+        }
+      } else {
+        toAdd.push(t);
+      }
     }
 
-    const trainingSamples = transactions.value.filter(
-      (t) => t.category !== 'other'
-    );
-    if (trainingSamples.length > 0) {
-      mlCategory.train(trainingSamples);
+    if (toAdd.length > 0) {
+      const withIds: Transaction[] = toAdd.map((t) => ({ ...t, id: generateId() }));
+
+      for (let i = 0; i < withIds.length; i += CHUNK_SIZE) {
+        const chunk = withIds.slice(i, i + CHUNK_SIZE);
+        transactions.value.push(...chunk);
+        await db.transactions.bulkAdd(chunk);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      await detectTransfers(withIds);
+
+      const trainingSamples = transactions.value.filter((t) => t.category !== 'other');
+      if (trainingSamples.length > 0) {
+        mlCategory.train(trainingSamples);
+      }
+
+      scheduleRecurringDetection();
     }
 
-    scheduleRecurringDetection();
-    return uniqueNewTransactions.length;
+    return { added: toAdd.length, tagged };
+  }
+
+  const TRANSFER_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+  async function detectTransfers(newTxs: Transaction[]) {
+    for (const newTx of newTxs) {
+      if (!newTx.accountId || newTx.isTransfer) continue;
+
+      const counterpart = transactions.value.find(
+        (t) =>
+          t.id !== newTx.id &&
+          t.accountId &&
+          t.accountId !== newTx.accountId &&
+          !t.isTransfer &&
+          Math.abs(t.amount + newTx.amount) < 0.01 && // opposite sign, same absolute amount
+          Math.abs(t.date.getTime() - newTx.date.getTime()) <= TRANSFER_WINDOW_MS
+      );
+
+      if (counterpart) {
+        newTx.isTransfer = true;
+        counterpart.isTransfer = true;
+        await db.transactions.bulkUpdate([
+          { key: newTx.id, changes: { isTransfer: true } },
+          { key: counterpart.id, changes: { isTransfer: true } },
+        ]);
+      }
+    }
   }
 
   async function updateTransactionCategory(
@@ -204,6 +245,12 @@ export function useTransactions() {
     scheduleRecurringDetection();
   }
 
+  async function deleteTransactionsByAccount(accountId: string) {
+    transactions.value = transactions.value.filter((t) => t.accountId !== accountId);
+    await db.transactions.where('accountId').equals(accountId).delete();
+    scheduleRecurringDetection();
+  }
+
   async function clearAllTransactions() {
     transactions.value = [];
     recurringPayments.value = [];
@@ -219,8 +266,8 @@ export function useTransactions() {
     return oldest?.date ?? null;
   }
 
-  const expenses = computed(() => transactions.value.filter((t) => t.amount < 0));
-  const income = computed(() => transactions.value.filter((t) => t.amount > 0));
+  const expenses = computed(() => transactions.value.filter((t) => t.amount < 0 && !t.isTransfer));
+  const income = computed(() => transactions.value.filter((t) => t.amount > 0 && !t.isTransfer));
 
   const categoryStats = computed((): CategoryStats[] => {
     const expenseTransactions = expenses.value;
@@ -257,11 +304,11 @@ export function useTransactions() {
   });
 
   const monthlyExpenses = computed(() =>
-    monthlyTransactions.value.filter((t) => t.amount < 0)
+    monthlyTransactions.value.filter((t) => t.amount < 0 && !t.isTransfer)
   );
 
   const monthlyIncome = computed(() =>
-    monthlyTransactions.value.filter((t) => t.amount > 0)
+    monthlyTransactions.value.filter((t) => t.amount > 0 && !t.isTransfer)
   );
 
   const monthlyCategoryTotals = computed(() => {
@@ -313,6 +360,7 @@ export function useTransactions() {
     updateTransactionCategory,
     bulkRecategorize,
     deleteTransaction,
+    deleteTransactionsByAccount,
     clearAllTransactions,
     getOldestTransactionDate,
     categorizeTransaction: autoCategorize,

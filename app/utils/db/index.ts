@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Transaction, RecurringPayment } from '~/types';
+import type { Transaction, RecurringPayment, Account } from '~/types';
 
 export interface CategoryModelRow {
   id: string;
@@ -22,6 +22,7 @@ class MyPocketDB extends Dexie {
   recurringPayments!: EntityTable<RecurringCacheRow, 'cacheKey'>;
   recurringCacheMeta!: EntityTable<RecurringCacheMeta, 'id'>;
   categoryModel!: EntityTable<CategoryModelRow, 'id'>;
+  accounts!: EntityTable<Account, 'id'>;
 
   constructor() {
     super('my-pocket');
@@ -33,8 +34,10 @@ class MyPocketDB extends Dexie {
       categoryModel: 'id',
     });
 
-    // Future schema changes go here, e.g.:
-    // this.version(2).stores({ ... }).upgrade((tx) => { ... });
+    this.version(2).stores({
+      transactions: 'id, date, category, accountId',
+      accounts: 'id',
+    });
   }
 }
 

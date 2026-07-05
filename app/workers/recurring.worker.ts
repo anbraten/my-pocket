@@ -28,6 +28,11 @@ class WorkerDB extends Dexie {
       recurringCacheMeta: 'id',
       categoryModel: 'id',
     });
+
+    this.version(2).stores({
+      transactions: 'id, date, category, accountId',
+      accounts: 'id',
+    });
   }
 }
 

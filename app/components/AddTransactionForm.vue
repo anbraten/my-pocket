@@ -59,6 +59,11 @@
       <UiInput v-model="form.date" type="date" :max="today" required />
     </div>
 
+    <div v-if="accountOptions.length > 1">
+      <label class="block text-sm font-medium text-black dark:text-white mb-2">Account</label>
+      <UiSelect v-model="form.accountId" :options="accountOptions" />
+    </div>
+
     <div class="flex gap-3 pt-2">
       <UiButton
         type="button"
@@ -83,6 +88,7 @@ const emit = defineEmits<{
 
 const { addTransaction, categorizeTransaction } = useTransactions();
 const { currency } = useCurrency();
+const { accountOptions } = useAccounts();
 
 const categoryOptions = computed(() =>
   Object.entries(CATEGORIES).map(([key, { icon }]) => ({
@@ -105,6 +111,7 @@ const form = reactive({
   category: 'other' as Category,
   date: today,
   isExpense: true,
+  accountId: '',
 });
 
 watch([form.description], (newDesc) => {
@@ -128,6 +135,7 @@ const handleSubmit = async () => {
     category: form.category,
     date: form.date ? new Date(form.date) : new Date(),
     merchant: form.description.split(' ').slice(0, 3).join(' '),
+    ...(form.accountId ? { accountId: form.accountId } : {}),
   });
 
   emit('close');
