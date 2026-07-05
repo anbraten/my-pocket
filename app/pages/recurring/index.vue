@@ -163,7 +163,7 @@
           :key="category.name"
           class="flex items-center gap-3"
         >
-          <span class="text-xl">{{ CATEGORIES[category.name].icon }}</span>
+          <span class="text-xl">{{ CATEGORIES[category.name]?.icon }}</span>
           <div class="flex-1">
             <div class="flex justify-between text-sm">
               <p class="capitalize text-stone-900 dark:text-stone-100">{{ category.name }}</p>
@@ -252,8 +252,13 @@ const totalMonthly = computed(
   () => totalMonthlyIncome.value - totalMonthlyExpenses.value
 );
 
-// Show largest expense (not income) as top recurring
-const topRecurring = computed(() => recurringExpenses.value[0]);
+// Show largest expense by normalized monthly amount
+const topRecurring = computed(() =>
+  recurringExpenses.value.reduce<RecurringPayment | undefined>(
+    (max, p) => (!max || normalizeRecurring(p) > normalizeRecurring(max) ? p : max),
+    undefined
+  )
+);
 
 const averageRecurring = computed(() => {
   if (!recurringPayments.value.length) return 0;

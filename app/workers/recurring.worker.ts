@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { detectRecurringPayments } from '~/utils/detectRecurring';
 import type { Transaction, RecurringPayment } from '~/types';
 
-const RECURRING_CACHE_VERSION = 2;
+const RECURRING_CACHE_VERSION = 4;
 
 interface RecurringCacheRow extends RecurringPayment {
   cacheKey: string;

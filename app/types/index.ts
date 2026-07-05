@@ -33,6 +33,7 @@ export interface RecurringPayment {
   lastDate: Date;
   nextExpectedDate?: Date;
   count: number;
+  transactionIds: string[];
   intervals?: number[]; // days between transactions
   confidence: number; // 0-1, confidence score
   amountStdDev?: number; // standard deviation for amount variance

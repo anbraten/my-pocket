@@ -135,6 +135,29 @@
       </div>
     </UiCard>
 
+    <UiCard class="space-y-4">
+      <header>
+        <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">
+          Categories
+        </p>
+        <h2 class="text-xl font-semibold text-stone-900 dark:text-stone-100">
+          Apply your labels
+        </h2>
+        <p class="text-sm text-stone-500 dark:text-stone-400">
+          Retrain on everything you've labeled and fill in all uncategorized transactions.
+        </p>
+      </header>
+      <UiButton block :disabled="isRecategorizing" @click="runBulkRecategorize">
+        {{ isRecategorizing ? 'Working…' : 'Recategorize uncategorized transactions' }}
+      </UiButton>
+      <div
+        v-if="recategorizeResult !== null"
+        class="rounded-lg border border-emerald-200 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300"
+      >
+        {{ recategorizeResult === 0 ? 'No uncategorized transactions found.' : `${recategorizeResult} transaction${recategorizeResult === 1 ? '' : 's'} categorized.` }}
+      </div>
+    </UiCard>
+
     <section class="grid gap-4 md:grid-cols-2">
       <UiCard class="space-y-4">
         <header>
@@ -212,7 +235,21 @@ const {
   addTransactions,
   clearAllTransactions,
   categorizeTransaction,
+  bulkRecategorize,
 } = useTransactions();
+
+const isRecategorizing = ref(false);
+const recategorizeResult = ref<number | null>(null);
+
+const runBulkRecategorize = async () => {
+  isRecategorizing.value = true;
+  recategorizeResult.value = null;
+  try {
+    recategorizeResult.value = await bulkRecategorize();
+  } finally {
+    isRecategorizing.value = false;
+  }
+};
 
 const { currency, currencyOptions, formatCurrency } = useCurrency();
 

@@ -296,22 +296,52 @@ export const normalizeDescription = (description: string): string => {
     .substring(0, 80); // Keep more context
 };
 
+const normalizeKeyword = (keyword: string): string =>
+  keyword
+    .toLowerCase()
+    .replace(/[^a-z0-9\s*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Pre-compiled per-category regex arrays, built once on first call.
+let compiledKeywords: Array<{ category: string; patterns: RegExp[] }> | null =
+  null;
+
+const getCompiledKeywords = () => {
+  if (!compiledKeywords) {
+    compiledKeywords = Object.entries(CATEGORIES)
+      .filter(([, { keywords }]) => keywords.length > 0)
+      .map(([category, { keywords }]) => ({
+        category,
+        patterns: keywords.map((kw) => {
+          const escaped = normalizeKeyword(kw).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            '\\$&',
+          );
+          return new RegExp(`\\b${escaped}\\b`);
+        }),
+      }));
+  }
+  return compiledKeywords;
+};
+
 /**
- * Categorize a transaction using keyword matching
+ * Categorize a transaction using keyword matching.
+ * Scores every category by number of matching keywords and returns the best.
  */
 export const categorizeTransaction = (description: string): Category => {
-  const lowerDesc = description.toLowerCase();
+  const normalized = normalizeDescription(description.split('\n')[0] || description);
 
-  // Check keyword-based categories
-  for (const [category, { keywords }] of Object.entries(CATEGORIES)) {
-    if (
-      keywords.some((keyword: string) =>
-        lowerDesc.includes(keyword.toLowerCase())
-      )
-    ) {
-      return category as Category;
+  let bestCategory: Category = 'other';
+  let bestScore = 0;
+
+  for (const { category, patterns } of getCompiledKeywords()) {
+    const score = patterns.filter((re) => re.test(normalized)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestCategory = category as Category;
     }
   }
 
-  return 'other';
+  return bestCategory;
 };

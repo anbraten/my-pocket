@@ -6,7 +6,7 @@ import type {
   Insight,
   RecurringPayment,
 } from '~/types';
-import type { Category } from '~/utils/categories';
+import { type Category, categorizeTransaction } from '~/utils/categories';
 import {
   generateRecurringInsights,
   generateCategoryInsights,
@@ -104,12 +104,8 @@ export function useTransactions() {
     const mlPrediction = mlCategory.predict(transaction);
     if (mlPrediction && mlPrediction.confidence > 0.6) {
       return mlPrediction.category as Category;
-    } else if (mlPrediction) {
-      console.log(
-        `ML prediction for "${transaction.description}" not confident enough (${(mlPrediction.confidence * 100).toFixed(0)}%)`
-      );
     }
-    return 'other';
+    return categorizeTransaction(transaction.description);
   }
 
   function generateId() {
@@ -176,6 +172,29 @@ export function useTransactions() {
     transaction.category = category;
     await db.transactions.update(id, { category });
     scheduleRecurringDetection();
+  }
+
+  async function bulkRecategorize(): Promise<number> {
+    const labeled = transactions.value.filter((t) => t.category !== 'other');
+    if (labeled.length > 0) {
+      mlCategory.train(labeled);
+    }
+
+    const uncategorized = transactions.value.filter(
+      (t) => t.category === 'other'
+    );
+    let updated = 0;
+
+    for (const t of uncategorized) {
+      const newCategory = autoCategorize(t);
+      if (newCategory !== 'other') {
+        t.category = newCategory;
+        await db.transactions.update(t.id, { category: newCategory });
+        updated++;
+      }
+    }
+
+    return updated;
   }
 
   async function deleteTransaction(id: string) {
@@ -292,6 +311,7 @@ export function useTransactions() {
     addTransaction,
     addTransactions,
     updateTransactionCategory,
+    bulkRecategorize,
     deleteTransaction,
     clearAllTransactions,
     getOldestTransactionDate,

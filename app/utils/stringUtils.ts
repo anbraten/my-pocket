@@ -1,4 +1,19 @@
 /**
+ * Token-based Jaccard similarity — robust to variable tokens (dates, month names, ref numbers).
+ * @returns A number between 0 and 1, where 1 is identical
+ */
+export function getJaccardSimilarity(a: string, b: string): number {
+  const tokensA = new Set(a.split(' ').filter(Boolean));
+  const tokensB = new Set(b.split(' ').filter(Boolean));
+  if (tokensA.size === 0 && tokensB.size === 0) return 1;
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let intersection = 0;
+  for (const t of tokensA) if (tokensB.has(t)) intersection++;
+  const union = tokensA.size + tokensB.size - intersection;
+  return intersection / union;
+}
+
+/**
  * Calculate string similarity using Levenshtein distance
  * @returns A number between 0 and 1, where 1 is identical
  */

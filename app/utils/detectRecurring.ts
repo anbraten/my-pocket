@@ -1,10 +1,31 @@
-import { getSimilarity } from '~/utils/stringUtils';
 import { RecurringModel } from '~/composables/recurring/model';
 import type { Transaction, RecurringPayment } from '~/types';
 
+// Tokens that appear across many different merchants and must not influence grouping.
+// Without stripping these, "SEPA Lastschrift Rewe GmbH" and "SEPA Lastschrift Edeka GmbH"
+// share 3 of 4 tokens and incorrectly merge into one recurring group.
+const NOISE_TOKENS = new Set([
+  'sepa', 'lastschrift', 'gutschrift', 'ueberweisung', 'abbuchung',
+  'gmbh', 'co', 'kg', 'ag', 'se', 'bv', 'ab', 'sa', 'mbh', 'ev', 'eg', 'ltd', 'inc',
+  'payment', 'zahlung', 'online',
+]);
+
+// Returns the fraction of the smaller token set covered by the larger (overlap coefficient).
+// More robust than Jaccard when one description is a subset of another (e.g. "Rewe" vs "Rewe Markt Hamburg").
+function merchantOverlap(a: string, b: string): number {
+  const tokensA = new Set(a.split(' ').filter((t) => t.length >= 3 && !NOISE_TOKENS.has(t)));
+  const tokensB = new Set(b.split(' ').filter((t) => t.length >= 3 && !NOISE_TOKENS.has(t)));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let intersection = 0;
+  for (const t of tokensA) if (tokensB.has(t)) intersection++;
+  return intersection / Math.min(tokensA.size, tokensB.size);
+}
+
 const mlRecurring = new RecurringModel();
 
-export function detectRecurringPayments(transactions: Transaction[]): RecurringPayment[] {
+export function detectRecurringPayments(
+  transactions: Transaction[],
+): RecurringPayment[] {
   const recurring: RecurringPayment[] = [];
   const merchantGroups = new Map<string, Transaction[]>();
 
@@ -44,12 +65,15 @@ export function detectRecurringPayments(transactions: Transaction[]): RecurringP
     for (const [existingKey, existingGroup] of merchantGroups.entries()) {
       const existingMerchant = existingKey.split('|')[0] ?? '';
       if (!existingMerchant) continue;
-      const similarity = getSimilarity(normalizedDescription, existingMerchant);
-      if (similarity <= 0.8) continue;
+      const similarity = merchantOverlap(normalizedDescription, existingMerchant);
+      if (similarity < 0.7) continue;
       const groupAvgAbs =
         existingGroup.reduce((s, tx) => s + Math.abs(tx.amount), 0) /
         existingGroup.length;
-      if (groupAvgAbs > 0 && Math.abs(absAmount - groupAvgAbs) / groupAvgAbs > 0.1)
+      if (
+        groupAvgAbs > 0 &&
+        Math.abs(absAmount - groupAvgAbs) / groupAvgAbs > 0.1
+      )
         continue;
       matchedKey = existingKey;
       break;
@@ -67,7 +91,7 @@ export function detectRecurringPayments(transactions: Transaction[]): RecurringP
     if (!firstTxn) continue;
 
     const sortedTransactions = [...groupTxns].sort(
-      (a, b) => a.date.getTime() - b.date.getTime()
+      (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
     const intervals: number[] = [];
@@ -86,14 +110,43 @@ export function detectRecurringPayments(transactions: Transaction[]): RecurringP
     const amounts = sortedTransactions.map((t) => t.amount);
     const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
     const amountStdDev = Math.sqrt(
-      amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) / amounts.length
+      amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) /
+        amounts.length,
     );
 
+    // Try each canonical period from shortest to longest; pick the first where
+    // ≥75% of intervals fall within the allowed tolerance.
+    const PERIODS: {
+      days: number;
+      freq: 'daily' | 'weekly' | 'monthly' | 'yearly';
+      tolerance: number;
+    }[] = [
+      { days: 1, freq: 'daily', tolerance: 0.5 },
+      { days: 7, freq: 'weekly', tolerance: 0.3 },
+      { days: 14, freq: 'weekly', tolerance: 0.25 }, // biweekly → weekly
+      { days: 30, freq: 'monthly', tolerance: 0.25 }, // handles 28–31 day months
+      { days: 365, freq: 'yearly', tolerance: 0.15 },
+    ];
+
     let frequency: 'weekly' | 'monthly' | 'yearly' | 'daily';
-    if (avgInterval <= 2) frequency = 'daily';
-    else if (avgInterval <= 10) frequency = 'weekly';
-    else if (avgInterval <= 45) frequency = 'monthly';
-    else frequency = 'yearly';
+    const detectedPeriod = PERIODS.find(
+      ({ days, tolerance }) =>
+        intervals.filter((i) => Math.abs(i - days) / days <= tolerance).length /
+          intervals.length >=
+        0.75,
+    );
+
+    if (detectedPeriod) {
+      frequency = detectedPeriod.freq;
+    } else {
+      // Fallback: classify by median interval
+      const sorted = [...intervals].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)] ?? avgInterval;
+      if (median <= 2) frequency = 'daily';
+      else if (median <= 10) frequency = 'weekly';
+      else if (median <= 180) frequency = 'monthly';
+      else frequency = 'yearly';
+    }
 
     const lastTxn = sortedTransactions[sortedTransactions.length - 1];
     if (!lastTxn) continue;
@@ -110,19 +163,20 @@ export function detectRecurringPayments(transactions: Transaction[]): RecurringP
       lastDate: lastTxn.date.toISOString(),
     });
 
-    if (confidence < 0.2) continue;
+    if (confidence < 0.3) continue;
 
     recurring.push({
       merchant: displayMerchant,
       amount: avgAmount,
-      category: lastTxn.category,
+      category: lastTxn.category ?? 'other',
       frequency,
       lastDate: lastTxn.date,
       nextExpectedDate: new Date(
-        lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000
+        lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000,
       ),
       intervals,
       count: sortedTransactions.length,
+      transactionIds: sortedTransactions.map((t) => t.id),
       confidence: Math.min(1.0, confidence),
       amountStdDev,
     });

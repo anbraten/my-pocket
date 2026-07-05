@@ -37,35 +37,32 @@
       </div>
     </div>
 
-    <UiCard
-      v-if="recurringPayment"
-      class="!bg-gradient-to-br !from-indigo-500 !to-purple-600 p-6 text-white !border-indigo-500"
-    >
+    <UiCard v-if="recurringPayment" padding="p-8">
       <div class="flex flex-wrap gap-6 items-end">
         <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-white/70">
+          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
             Average Amount
           </p>
-          <h2 class="text-4xl font-semibold">
+          <h2 class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(Math.abs(recurringPayment.amount)) }}
           </h2>
-          <p class="text-sm text-white/80 mt-2 capitalize">
+          <p class="text-sm text-stone-500 dark:text-stone-400 mt-2 capitalize">
             {{ recurringPayment.frequency }} •
             {{ relatedTransactions.length }} transactions
           </p>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs uppercase tracking-[0.3em] text-white/70">
+          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Next Expected
           </p>
-          <h3 class="text-2xl font-semibold">
+          <h3 class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
             {{
               formatDate(
                 recurringPayment.nextExpectedDate || recurringPayment.lastDate
               )
             }}
           </h3>
-          <p class="text-sm text-white/80">
+          <p class="text-sm text-stone-500 dark:text-stone-400">
             {{
               formatDistanceToNow(
                 recurringPayment.nextExpectedDate || recurringPayment.lastDate,
@@ -75,29 +72,29 @@
           </p>
         </div>
       </div>
-      <div class="mt-6 grid gap-4 md:grid-cols-3 text-sm">
+      <div class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm">
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Confidence
           </p>
-          <p class="text-lg font-semibold">
+          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
             {{ Math.round(recurringPayment.confidence * 100) }}%
           </p>
         </div>
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Category
           </p>
-          <p class="text-lg font-semibold capitalize">
+          <p class="text-lg font-semibold capitalize text-stone-900 dark:text-stone-100">
             {{ CATEGORIES[recurringPayment.category]?.icon }}
             {{ recurringPayment.category }}
           </p>
         </div>
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Last Transaction
           </p>
-          <p class="text-lg font-semibold">
+          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
             {{ formatDate(recurringPayment.lastDate) }}
           </p>
         </div>
@@ -143,7 +140,7 @@
             <p
               class="text-lg font-semibold"
               :class="
-                transaction.amount > 0 ? 'text-emerald-400' : 'text-rose-300'
+                transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
               "
             >
               {{ transaction.amount > 0 ? '+' : '-'
@@ -185,54 +182,15 @@ const recurringPayment = computed((): RecurringPayment | undefined => {
   );
 });
 
-// Get transactions related to this merchant
+// Get transactions related to this merchant using the IDs recorded during detection.
 const relatedTransactions = computed((): Transaction[] => {
-  const merchantLower = merchantName.value.toLowerCase().trim();
-
+  if (!recurringPayment.value) return [];
+  const ids = new Set(recurringPayment.value.transactionIds);
   return allTransactions.value
-    .filter((t) => {
-      const transactionMerchant = (t.description.split('\n')[0] ?? '')
-        .toLowerCase()
-        .trim();
-
-      // Use fuzzy matching to find similar merchants
-      const similarity = getSimilarity(transactionMerchant, merchantLower);
-      return similarity > 0.8;
-    })
+    .filter((t) => ids.has(t.id))
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 });
 
-// Helper function for fuzzy string matching
-const getSimilarity = (str1: string, str2: string): number => {
-  const longer = str1.length > str2.length ? str1 : str2;
-  const shorter = str1.length > str2.length ? str2 : str1;
-
-  if (longer.length === 0) return 1.0;
-
-  const editDistance = (s1: string, s2: string): number => {
-    const costs: number[] = [];
-    for (let i = 0; i <= s1.length; i++) {
-      let lastValue = i;
-      for (let j = 0; j <= s2.length; j++) {
-        if (i === 0) {
-          costs[j] = j;
-        } else if (j > 0) {
-          let newValue = costs[j - 1] ?? 0;
-          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-            newValue =
-              Math.min(Math.min(newValue, lastValue), costs[j] ?? 0) + 1;
-          }
-          costs[j - 1] = lastValue;
-          lastValue = newValue;
-        }
-      }
-      if (i > 0) costs[s2.length] = lastValue;
-    }
-    return costs[s2.length] ?? 0;
-  };
-
-  return (longer.length - editDistance(longer, shorter)) / longer.length;
-};
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>
   formatCurrency(value, {
