@@ -24,9 +24,9 @@ const props = withDefaults(
 
 const variantClasses: Record<Variant, string> = {
   default:
-    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800',
+    'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800',
   muted:
-    'bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800',
+    'bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800',
   danger: 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900',
 };
 

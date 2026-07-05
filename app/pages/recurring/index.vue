@@ -1,69 +1,66 @@
 <template>
   <div class="space-y-6">
-    <UiCard
-      as="section"
-      class="!bg-gradient-to-br !from-indigo-500 !to-purple-600 p-6 text-white !border-indigo-500"
-    >
+    <UiCard as="section" padding="p-8">
       <div class="flex flex-wrap gap-6 items-end">
         <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-white/70">
+          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
             Monthly net
           </p>
-          <h1 class="text-4xl font-semibold">
+          <h1 class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(totalMonthly) }}
           </h1>
-          <p class="text-sm text-white/80 mt-2">
+          <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">
             {{ recurringPayments.length }} recurring items
           </p>
           <div class="mt-3 flex gap-4 text-sm">
             <div>
-              <span class="text-white/60">Income: </span>
-              <span class="font-semibold text-emerald-300"
+              <span class="text-stone-500 dark:text-stone-400">Income: </span>
+              <span class="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums"
                 >+{{ formatMoney(totalMonthlyIncome) }}</span
               >
             </div>
             <div>
-              <span class="text-white/60">Expenses: </span>
-              <span class="font-semibold text-rose-300"
+              <span class="text-stone-500 dark:text-stone-400">Expenses: </span>
+              <span class="font-semibold text-rose-500 tabular-nums"
                 >-{{ formatMoney(totalMonthlyExpenses) }}</span
               >
             </div>
           </div>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs uppercase tracking-[0.3em] text-white/70">
+          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Next transaction
           </p>
-          <h2 class="text-2xl font-semibold">{{ nextCharge.label }}</h2>
-          <p class="text-sm text-white/80">{{ nextCharge.detail }}</p>
+          <h2 class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums">{{ nextCharge.label }}</h2>
+          <p class="text-sm text-stone-500 dark:text-stone-400">{{ nextCharge.detail }}</p>
         </div>
       </div>
-      <div class="mt-6 grid gap-4 md:grid-cols-3 text-sm">
+      <div class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm">
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Largest expense
           </p>
-          <p class="text-lg font-semibold">
+          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
             {{ topRecurring?.merchant || '—' }}
           </p>
-          <p v-if="topRecurring" class="text-white/70">
+          <p v-if="topRecurring" class="text-stone-500 dark:text-stone-400 tabular-nums">
             {{ formatMoney(Math.abs(normalizeRecurring(topRecurring))) }} /
             {{ topRecurring.frequency }}
           </p>
         </div>
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Average ticket
           </p>
-          <p class="text-lg font-semibold">
+          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(averageRecurring) }}
           </p>
         </div>
         <div>
-          <p class="text-white/60 uppercase text-xs tracking-[0.3em]">
+          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
             Confidence
           </p>
-          <p class="text-lg font-semibold">
+          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
             {{ Math.round(meanConfidence * 100) }}%
           </p>
         </div>
@@ -73,23 +70,23 @@
     <UiCard as="section">
       <header class="flex flex-wrap items-center gap-2 mb-4">
         <div>
-          <p class="text-xs text-neutral-600 dark:text-neutral-400">
+          <p class="text-xs text-stone-500 dark:text-stone-400">
             Upcoming transactions
           </p>
-          <h3 class="text-xl font-semibold text-black dark:text-white">
+          <h3 class="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Recurring Transactions
           </h3>
         </div>
-        <span class="ml-auto text-xs text-neutral-600 dark:text-neutral-400"
+        <span class="ml-auto text-xs text-stone-500 dark:text-stone-400"
           >{{ sortedRecurring.length }} scheduled</span
         >
       </header>
 
-      <div class="divide-y divide-neutral-200 dark:divide-neutral-800">
+      <div class="divide-y divide-stone-200 dark:divide-stone-800">
         <article
           v-for="payment in sortedRecurring"
           :key="payment.merchant"
-          class="py-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors px-2 -mx-2"
+          class="py-4 flex items-center gap-4 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg transition-colors px-2 -mx-2"
           @click="showTransactions(payment)"
         >
           <TransactionLogo
@@ -99,7 +96,7 @@
           />
           <div class="flex-1">
             <div class="flex items-center gap-2">
-              <p class="font-medium text-black dark:text-white">
+              <p class="font-medium text-stone-900 dark:text-stone-100">
                 {{ payment.merchant }}
               </p>
               <span
@@ -111,19 +108,14 @@
                 {{ getStatus(payment).label }}
               </span>
             </div>
-            <p
-              class="text-xs text-neutral-600 dark:text-neutral-400 capitalize"
-            >
+            <p class="text-xs text-stone-500 dark:text-stone-400 capitalize">
               {{ payment.frequency }} •
-              <span
-                :class="{
-                  'text-rose-400': payment.confidence < 0.5,
-                }"
-                >{{ formatConfidence(payment.confidence) }}</span
-              >
+              <span :class="{ 'text-rose-500': payment.confidence < 0.5 }">
+                {{ formatConfidence(payment.confidence) }}
+              </span>
               • {{ payment.count }} times
             </p>
-            <p class="text-xs text-neutral-600 dark:text-neutral-400">
+            <p class="text-xs text-stone-500 dark:text-stone-400">
               Next on
               {{ formatDate(payment.nextExpectedDate || payment.lastDate) }} ({{
                 formatDistanceToNow(
@@ -135,18 +127,18 @@
           </div>
           <div class="text-right">
             <p
-              class="text-lg font-semibold"
-              :class="payment.amount > 0 ? 'text-emerald-400' : 'text-rose-300'"
+              class="text-base font-semibold tabular-nums"
+              :class="payment.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
             >
               {{ payment.amount > 0 ? '+' : '-'
               }}{{ formatMoney(Math.abs(normalizeRecurring(payment))) }}
             </p>
-            <p class="text-xs text-slate-500">monthly equivalent</p>
+            <p class="text-xs text-stone-500 dark:text-stone-400">monthly</p>
           </div>
         </article>
         <div
           v-if="sortedRecurring.length === 0"
-          class="py-8 text-center text-slate-500"
+          class="py-8 text-center text-stone-500 dark:text-stone-400"
         >
           No recurring transactions detected yet.
         </div>
@@ -156,12 +148,12 @@
     <UiCard as="section">
       <header class="flex items-center justify-between mb-4">
         <div>
-          <p class="text-xs text-slate-400">Category impact</p>
-          <h3 class="text-xl font-semibold text-white">
+          <p class="text-xs text-stone-500 dark:text-stone-400">Category impact</p>
+          <h3 class="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Breakdown by category
           </h3>
         </div>
-        <span class="text-xs text-slate-500"
+        <span class="text-xs text-stone-500 dark:text-stone-400"
           >{{ categoryBreakdown.length }} categories</span
         >
       </header>
@@ -171,25 +163,22 @@
           :key="category.name"
           class="flex items-center gap-3"
         >
-          <span class="text-2xl">{{ CATEGORIES[category.name].icon }}</span>
+          <span class="text-xl">{{ CATEGORIES[category.name].icon }}</span>
           <div class="flex-1">
             <div class="flex justify-between text-sm">
-              <p class="capitalize dark:text-white">{{ category.name }}</p>
-              <strong class="text-rose-200">{{
+              <p class="capitalize text-stone-900 dark:text-stone-100">{{ category.name }}</p>
+              <strong class="text-stone-600 dark:text-stone-300 tabular-nums">{{
                 formatMoney(category.total)
               }}</strong>
             </div>
-            <div class="h-2 bg-white/5 rounded-full overflow-hidden mt-2">
+            <div class="h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden mt-2">
               <div
-                class="h-full rounded-full"
-                :style="{
-                  width: `${category.share}%`,
-                  backgroundColor: CATEGORIES[category.name].color,
-                }"
-              ></div>
+                class="h-full rounded-full bg-violet-500"
+                :style="{ width: `${category.share}%` }"
+              />
             </div>
           </div>
-          <span class="text-xs text-slate-500"
+          <span class="text-xs text-stone-500 dark:text-stone-400"
             >{{ Math.round(category.share) }}%</span
           >
         </div>
@@ -298,7 +287,7 @@ const getStatus = (payment: RecurringPayment) => {
   const nextDate = payment.nextExpectedDate || payment.lastDate;
 
   if (isPast(nextDate) && !isToday(nextDate)) {
-    return { label: 'Overdue', color: 'text-rose-400 bg-rose-400/10' };
+    return { label: 'Overdue', color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-400/10' };
   }
 
   let isDueThisPeriod = false;
@@ -311,9 +300,9 @@ const getStatus = (payment: RecurringPayment) => {
   }
 
   if (isDueThisPeriod) {
-    return { label: 'Due soon', color: 'text-amber-400 bg-amber-400/10' };
+    return { label: 'Due soon', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-400/10' };
   } else {
-    return { label: 'Paid', color: 'text-emerald-400 bg-emerald-400/10' };
+    return { label: 'Paid', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-400/10' };
   }
 };
 

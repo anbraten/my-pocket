@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative flex items-center justify-center overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800 shrink-0 border border-neutral-200 dark:border-neutral-700"
+    class="relative flex items-center justify-center overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800 shrink-0 border border-stone-200 dark:border-stone-700"
     :class="sizeClasses"
   >
     <img

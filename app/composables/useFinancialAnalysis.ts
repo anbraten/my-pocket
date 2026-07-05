@@ -39,7 +39,7 @@ export interface AnomalyDetection {
 }
 
 export function useFinancialAnalysis() {
-  const { monthlyExpenses, monthlyIncome, detectRecurringPayments } =
+  const { monthlyExpenses, monthlyIncome, recurringPayments } =
     useTransactions();
 
   // Calculate current month progress
@@ -135,7 +135,7 @@ export function useFinancialAnalysis() {
 
   // Analyze recurring transactions (expenses and income)
   const analyzeRecurring = computed(() => {
-    const payments = detectRecurringPayments();
+    const payments = recurringPayments.value;
 
     // Get recurring income to use as the budget baseline
     const recurringIncome = payments.filter((p) => p.amount > 0);

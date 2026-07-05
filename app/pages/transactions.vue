@@ -14,13 +14,13 @@
           <span class="hidden sm:inline">Previous</span>
         </UiButton>
         <div class="text-center">
-          <h1 class="text-2xl font-bold text-black dark:text-white">
+          <h1 class="text-2xl font-bold text-stone-900 dark:text-stone-100">
             {{ selectedMonthLabel }}
           </h1>
           <button
             v-if="!isCurrentMonth"
             @click="goToCurrentMonth"
-            class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline mt-1 font-medium"
+            class="text-xs text-violet-600 dark:text-violet-400 hover:underline mt-1 font-medium"
           >
             Jump to current month
           </button>
@@ -37,44 +37,36 @@
         </UiButton>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-          <p
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-1"
-          >
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
+          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
             Total Spent
           </p>
-          <p class="text-2xl font-bold text-black dark:text-white">
+          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(selectedMonthStats.totalSpent) }}
           </p>
         </div>
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-          <p
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-1"
-          >
+        <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
+          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
             Transactions
           </p>
-          <p class="text-2xl font-bold text-black dark:text-white">
+          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ selectedMonthStats.count }}
           </p>
         </div>
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-          <p
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-1"
-          >
+        <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
+          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
             Avg Amount
           </p>
-          <p class="text-2xl font-bold text-black dark:text-white">
+          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(selectedMonthStats.avgTicket) }}
           </p>
         </div>
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-          <p
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-1"
-          >
+        <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
+          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
             Income
           </p>
-          <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
             +{{ formatMoney(selectedMonthStats.income) }}
           </p>
         </div>
@@ -86,7 +78,7 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div>
           <label
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-2 block"
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2 block"
           >
             Category
           </label>
@@ -98,7 +90,7 @@
         </div>
         <div>
           <label
-            class="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 mb-2 block"
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2 block"
           >
             Transaction Type
           </label>
@@ -113,7 +105,7 @@
 
     <!-- Transactions List -->
     <div class="flex items-center justify-between mb-3">
-      <p class="text-sm text-neutral-600 dark:text-neutral-400">
+      <p class="text-sm text-stone-500 dark:text-stone-400">
         {{ selectedMonthTransactions.length }}
         {{
           selectedMonthTransactions.length === 1
@@ -127,11 +119,11 @@
     </div>
 
     <UiCard padding="p-0" class="overflow-hidden">
-      <div class="divide-y divide-neutral-200 dark:divide-neutral-800">
+      <div class="divide-y divide-stone-200 dark:divide-stone-800">
         <article
           v-for="transaction in selectedMonthTransactions"
           :key="transaction.id"
-          class="p-4 flex items-start gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
+          class="p-4 flex items-start gap-4 hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
         >
           <TransactionLogo
             :name="getFirstLine(transaction.description)"
@@ -142,18 +134,18 @@
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <p
-                class="font-medium truncate text-black dark:text-white"
+                class="font-medium truncate text-stone-900 dark:text-stone-100"
                 :title="transaction.description"
               >
                 {{ getFirstLine(transaction.description) }}
               </p>
               <span
                 v-if="isRecurring(transaction)"
-                class="text-xs bg-amber-400/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-400/30 font-medium"
+                class="text-[10px] bg-violet-100 dark:bg-violet-400/10 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
                 >Recurring</span
               >
             </div>
-            <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
               {{ formatDate(transaction.date) }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
@@ -168,7 +160,7 @@
               <UiButton
                 variant="ghost"
                 size="sm"
-                class="text-rose-300 hover:text-rose-200"
+                class="text-rose-500 hover:text-rose-600"
                 @click="deleteTransaction(transaction.id)"
               >
                 Delete
@@ -176,10 +168,8 @@
             </div>
           </div>
           <p
-            :class="
-              transaction.amount > 0 ? 'text-emerald-400' : 'text-rose-400'
-            "
-            class="font-semibold"
+            :class="transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+            class="font-semibold tabular-nums shrink-0"
           >
             {{ formatSignedMoney(transaction.amount) }}
           </p>
@@ -192,7 +182,7 @@
       class="text-center py-12"
     >
       <UiCard>
-        <p class="text-neutral-600 dark:text-neutral-400">
+        <p class="text-stone-500 dark:text-stone-400">
           No transactions found for {{ selectedMonthLabel }}.
         </p>
       </UiCard>
@@ -200,11 +190,11 @@
 
     <!-- Add Transaction Button -->
     <button
-      class="fixed bottom-28 right-6 md:bottom-8 md:right-10 h-14 w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center text-2xl hover:bg-emerald-600 transition-all shadow-lg hover:shadow-xl"
+      class="fixed bottom-28 right-6 md:bottom-8 md:right-10 h-14 w-14 rounded-full bg-violet-600 text-white flex items-center justify-center text-2xl hover:bg-violet-700 transition-all shadow-lg hover:shadow-xl"
       @click="showAddTransaction = true"
       aria-label="Add transaction"
     >
-      ➕
+      +
     </button>
 
     <!-- Add Transaction Modal -->
@@ -213,22 +203,22 @@
         class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4"
       >
         <div
-          class="bg-white dark:bg-neutral-900 rounded-lg w-full max-w-lg p-6 space-y-4 border border-neutral-200 dark:border-neutral-800"
+          class="bg-white dark:bg-stone-900 rounded-lg w-full max-w-lg p-6 space-y-4 border border-stone-200 dark:border-stone-800"
           @click.stop
         >
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-black dark:text-white">
+            <h2 class="text-xl font-bold text-stone-900 dark:text-stone-100">
               Add Transaction
             </h2>
             <button
               @click="showAddTransaction = false"
-              class="text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white text-2xl"
+              class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 text-2xl leading-none"
             >
               ✕
             </button>
           </div>
 
-          <AddTransactionForm @close="showAddTransaction = false" />
+          <AddTransactionForm @close="handleAddClose" />
         </div>
       </div>
     </Teleport>
@@ -243,9 +233,10 @@ const showAddTransaction = ref(false);
 
 const {
   transactions,
+  recurringPayments,
   updateTransactionCategory,
   deleteTransaction: deleteTxn,
-  detectRecurringPayments,
+  getOldestTransactionDate,
 } = useTransactions();
 
 const { formatCurrency } = useCurrency();
@@ -287,15 +278,22 @@ const goToCurrentMonth = () => {
   selectedMonth.value = new Date();
 };
 
+// Oldest transaction month, fetched via the indexed `date` query instead of
+// sorting the whole in-memory array. Refreshed whenever the transaction
+// count changes (add/delete/import may shift what the oldest month is).
+const oldestMonth = ref<string | null>(null);
+const refreshOldestMonth = async () => {
+  const oldest = await getOldestTransactionDate();
+  oldestMonth.value = oldest ? format(oldest, 'yyyy-MM') : null;
+};
+watch(() => transactions.value.length, refreshOldestMonth, {
+  immediate: true,
+});
+
 // Check if we can navigate
 const canGoPrevious = computed(() => {
-  if (transactions.value.length === 0) return false;
-  const oldestTransaction = [...transactions.value].sort(
-    (a, b) => a.date.getTime() - b.date.getTime()
-  )[0];
-  if (!oldestTransaction) return false;
-  const oldestMonth = format(oldestTransaction.date, 'yyyy-MM');
-  return selectedMonthKey.value > oldestMonth;
+  if (!oldestMonth.value) return false;
+  return selectedMonthKey.value > oldestMonth.value;
 });
 
 const canGoNext = computed(() => {
@@ -303,9 +301,6 @@ const canGoNext = computed(() => {
   const currentMonth = format(now, 'yyyy-MM');
   return selectedMonthKey.value < currentMonth;
 });
-
-// Get recurring payments
-const recurringPayments = computed(() => detectRecurringPayments());
 
 // Check if a transaction is recurring
 const isRecurring = (transaction: (typeof transactions.value)[0]) => {
@@ -338,12 +333,16 @@ const typeOptions = [
   { label: 'Variable only', value: 'variable' },
 ];
 
+// Load only the selected month's transactions from the indexed `date` field
+// - navigating months never has to scan or render the full history.
+const {
+  monthTransactions,
+  refresh: refreshMonthTransactions,
+} = useTransactionsByMonth(selectedMonth);
+
 // Get transactions for selected month
 const selectedMonthTransactions = computed(() => {
-  let filtered = transactions.value.filter((t) => {
-    const txMonth = format(t.date, 'yyyy-MM');
-    return txMonth === selectedMonthKey.value;
-  });
+  let filtered = monthTransactions.value;
 
   if (filterCategory.value) {
     filtered = filtered.filter((t) => t.category === filterCategory.value);
@@ -355,24 +354,19 @@ const selectedMonthTransactions = computed(() => {
     filtered = filtered.filter((t) => !isRecurring(t));
   }
 
-  return filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return [...filtered].sort((a, b) => b.date.getTime() - a.date.getTime());
 });
 
 // Calculate stats for selected month
 const selectedMonthStats = computed(() => {
-  const monthTransactions = transactions.value.filter((t) => {
-    const txMonth = format(t.date, 'yyyy-MM');
-    return txMonth === selectedMonthKey.value;
-  });
-
-  const expenses = monthTransactions.filter((t) => t.amount < 0);
-  const income = monthTransactions.filter((t) => t.amount > 0);
+  const expenses = monthTransactions.value.filter((t) => t.amount < 0);
+  const income = monthTransactions.value.filter((t) => t.amount > 0);
 
   const totalSpent = Math.abs(expenses.reduce((sum, t) => sum + t.amount, 0));
   const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
 
   return {
-    count: monthTransactions.length,
+    count: monthTransactions.value.length,
     totalSpent,
     income: totalIncome,
     avgTicket: expenses.length > 0 ? totalSpent / expenses.length : 0,
@@ -397,12 +391,22 @@ const formatSignedMoney = (value: number) => {
 
 const updateCategory = (id: string, category: string) => {
   updateTransactionCategory(id, category as Category);
+  const item = monthTransactions.value.find((t) => t.id === id);
+  if (item) item.category = category as Category;
 };
 
 const deleteTransaction = (id: string) => {
   if (confirm('Delete this transaction?')) {
     deleteTxn(id);
+    monthTransactions.value = monthTransactions.value.filter(
+      (t) => t.id !== id
+    );
   }
+};
+
+const handleAddClose = () => {
+  showAddTransaction.value = false;
+  refreshMonthTransactions();
 };
 
 const capitalize = (value: string) =>

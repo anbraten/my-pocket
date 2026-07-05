@@ -3,7 +3,7 @@
     <div class="flex items-center gap-4 mb-6">
       <NuxtLink
         to="/recurring"
-        class="text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+        class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
       >
         <svg
           class="w-6 h-6"
@@ -27,7 +27,7 @@
           size="md"
         />
         <div>
-          <p class="text-xs text-neutral-600 dark:text-neutral-400">
+          <p class="text-xs text-stone-500 dark:text-stone-400">
             Back to recurring
           </p>
           <h1 class="text-2xl font-semibold text-black dark:text-white">
@@ -107,14 +107,14 @@
     <UiCard>
       <header class="flex items-center justify-between mb-4">
         <div>
-          <p class="text-xs text-neutral-600 dark:text-neutral-400">
+          <p class="text-xs text-stone-500 dark:text-stone-400">
             Transaction history
           </p>
           <h3 class="text-xl font-semibold text-black dark:text-white">
             All Transactions
           </h3>
         </div>
-        <span class="text-xs text-neutral-600 dark:text-neutral-400">
+        <span class="text-xs text-stone-500 dark:text-stone-400">
           {{ relatedTransactions.length }} total
         </span>
       </header>
@@ -123,7 +123,7 @@
         <article
           v-for="transaction in relatedTransactions"
           :key="transaction.id"
-          class="py-3 px-3 flex items-center gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors"
+          class="py-3 px-3 flex items-center gap-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg transition-colors"
         >
           <div class="text-2xl">
             {{ CATEGORIES[transaction.category]?.icon }}
@@ -134,7 +134,7 @@
             >
               {{ transaction.description }}
             </p>
-            <p class="text-xs text-neutral-600 dark:text-neutral-400">
+            <p class="text-xs text-stone-500 dark:text-stone-400">
               {{ format(transaction.date, 'MMM d, yyyy') }} •
               <span class="capitalize">{{ transaction.category }}</span>
             </p>
@@ -153,7 +153,7 @@
         </article>
         <div
           v-if="relatedTransactions.length === 0"
-          class="py-8 text-center text-neutral-500"
+          class="py-8 text-center text-stone-500"
         >
           No transactions found for this merchant.
         </div>

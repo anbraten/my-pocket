@@ -2,7 +2,7 @@
   <div class="relative">
     <span
       v-if="prefix"
-      class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 dark:text-neutral-400"
+      class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-stone-500 dark:text-stone-400"
     >
       {{ prefix }}
     </span>
@@ -10,7 +10,7 @@
       :type="type"
       :value="modelValue"
       @input="onInput"
-      class="w-full rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-black dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+      class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
       :class="inputClass"
       v-bind="attrs"
     />

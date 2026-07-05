@@ -1,29 +1,24 @@
 <template>
-  <div class="min-h-screen pb-32 transition-colors bg-white dark:bg-black">
+  <div class="min-h-screen pb-32 transition-colors bg-stone-200 dark:bg-stone-950">
     <div class="max-w-6xl mx-auto px-4 lg:px-8 pt-8 space-y-6">
-      <header
-        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-      >
-        <h1 class="text-2xl md:text-3xl font-bold text-black dark:text-white">
+      <header class="flex items-center justify-between">
+        <NuxtLink to="/" class="text-xl font-semibold tracking-tight text-stone-900 dark:text-stone-100 hover:opacity-80 transition-opacity">
           MyPocket
-        </h1>
+        </NuxtLink>
 
-        <nav
-          class="hidden md:flex items-center gap-1 rounded-lg p-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
-        >
+        <nav class="hidden md:flex items-center bg-stone-100 dark:bg-stone-800/80 rounded-full p-1 gap-0.5">
           <NuxtLink
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
-            class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            class="px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-150"
             :class="
               isActive(item.path)
-                ? 'bg-neutral-200 dark:bg-neutral-800 text-black dark:text-white'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
             "
           >
-            <span>{{ item.icon }}</span>
-            <span>{{ item.label }}</span>
+            {{ item.label }}
           </NuxtLink>
         </nav>
       </header>
@@ -31,9 +26,11 @@
       <NuxtPage />
     </div>
 
+    <WorkerStatus />
+
     <!-- Bottom Navigation -->
     <nav
-      class="fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/95 dark:bg-neutral-900/95 border-t border-neutral-200 dark:border-neutral-800 md:hidden"
+      class="fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-stone-50/95 dark:bg-stone-950/95 border-t border-stone-200 dark:border-stone-800 md:hidden"
     >
       <div class="flex justify-around items-center h-16 max-w-4xl mx-auto px-4">
         <NuxtLink
@@ -43,8 +40,8 @@
           class="flex flex-col items-center justify-center flex-1 gap-1 text-xs font-medium transition-colors"
           :class="[
             isActive(item.path)
-              ? 'text-black dark:text-white'
-              : 'text-neutral-600 dark:text-neutral-400',
+              ? 'text-violet-600 dark:text-violet-400'
+              : 'text-stone-500 dark:text-stone-400',
           ]"
         >
           <span class="text-xl">{{ item.icon }}</span>

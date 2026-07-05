@@ -26,11 +26,11 @@ const props = withDefaults(
 );
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-emerald-500 text-white hover:bg-emerald-600',
+  primary: 'bg-violet-600 text-white hover:bg-violet-700',
   secondary:
-    'bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-black dark:text-white hover:bg-neutral-300 dark:hover:bg-neutral-700',
+    'bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700',
   ghost:
-    'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800',
+    'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800',
   danger: 'bg-red-600 text-white hover:bg-red-700',
 };
 
@@ -41,7 +41,7 @@ const sizeClasses: Record<Size, string> = {
 };
 
 const buttonClasses = computed(() => [
-  'font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0',
+  'font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-0',
   variantClasses[props.variant] ?? variantClasses.primary,
   sizeClasses[props.size] ?? sizeClasses.md,
   props.block ? 'w-full' : '',

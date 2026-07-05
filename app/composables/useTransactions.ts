@@ -1,5 +1,5 @@
-import { useLocalStorage } from '@vueuse/core';
 import { endOfMonth, startOfMonth } from 'date-fns';
+import { liveQuery } from 'dexie';
 import type {
   Transaction,
   CategoryStats,
@@ -7,54 +7,108 @@ import type {
   RecurringPayment,
 } from '~/types';
 import type { Category } from '~/utils/categories';
-import { getSimilarity } from '~/utils/stringUtils';
 import {
   generateRecurringInsights,
   generateCategoryInsights,
 } from '~/utils/insights';
 import { useCategoryML } from '~/composables/useCategoryML';
-import { RecurringModel } from './recurring/model';
+import { db } from '~/utils/db';
+import { migrateLegacyData } from '~/utils/db/migrateLegacyData';
+
+const CHUNK_SIZE = 500;
+
+// Module-level singleton state, shared across every useTransactions() call.
+const transactions = ref<Transaction[]>([]);
+const isLoaded = ref(false);
+const recurringPayments = ref<RecurringPayment[]>([]);
+const isComputingRecurring = ref(false);
+
+let initPromise: Promise<void> | null = null;
+let recurringWorker: Worker | null = null;
+let pendingRecurringRerun = false;
+let recurringDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function getRecurringWorker(): Worker {
+  if (!recurringWorker) {
+    recurringWorker = new Worker(
+      new URL('../workers/recurring.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    recurringWorker.onmessage = () => {
+      isComputingRecurring.value = false;
+      if (pendingRecurringRerun) {
+        pendingRecurringRerun = false;
+        runRecurringWorker();
+      }
+    };
+    recurringWorker.onerror = () => {
+      isComputingRecurring.value = false;
+    };
+  }
+  return recurringWorker;
+}
+
+function runRecurringWorker() {
+  isComputingRecurring.value = true;
+  // Vue reactive proxies can't be structured-cloned — spread each item to a plain object.
+  const plainTransactions = transactions.value.map((t) => ({ ...t }));
+  getRecurringWorker().postMessage({ type: 'detect', transactions: plainTransactions });
+}
+
+// Debounced so rapid mutations (bulk category updates, deletes) coalesce.
+function scheduleRecurringDetection() {
+  if (!import.meta.client || transactions.value.length === 0) return;
+  if (recurringDebounceTimer) clearTimeout(recurringDebounceTimer);
+  recurringDebounceTimer = setTimeout(() => {
+    recurringDebounceTimer = null;
+    if (isComputingRecurring.value) {
+      pendingRecurringRerun = true;
+      return;
+    }
+    runRecurringWorker();
+  }, 300);
+}
+
+function ensureLoaded() {
+  if (!import.meta.client) return Promise.resolve();
+  if (!initPromise) {
+    initPromise = (async () => {
+      await migrateLegacyData();
+      transactions.value = await db.transactions.toArray();
+
+      // Live query: whenever the worker (or any write) updates recurringPayments
+      // in IndexedDB, Vue sees the change automatically.
+      liveQuery(() => db.recurringPayments.toArray()).subscribe({
+        next: (rows) => {
+          recurringPayments.value = rows.map(({ cacheKey: _ck, ...rest }) => rest as RecurringPayment);
+        },
+        error: (err) => console.error('[recurring liveQuery]', err),
+      });
+
+      isLoaded.value = true;
+
+      // Run initial detection in the worker. The worker skips if the cache
+      // is already fresh.
+      scheduleRecurringDetection();
+    })();
+  }
+  return initPromise;
+}
 
 export function useTransactions() {
+  ensureLoaded();
+
   const mlCategory = useCategoryML();
-  const mlRecurring = new RecurringModel();
 
-  const transactions = useLocalStorage<Transaction[]>(
-    'my-pocket:transactions',
-    [],
-    {
-      serializer: {
-        read: (v) => {
-          if (!v) return [];
-          const parsed = JSON.parse(v) as Transaction[];
-          // Convert date strings back to Date objects
-          return parsed.map((t) => ({
-            ...t,
-            date: new Date(t.date),
-          }));
-        },
-        write: (v) => JSON.stringify(v),
-      },
-    }
-  );
-
-  // Auto-categorize transaction using ML model
   function autoCategorize(transaction: Transaction): Category {
-    // Try ML model - if confident, use it
     const mlPrediction = mlCategory.predict(transaction);
     if (mlPrediction && mlPrediction.confidence > 0.6) {
       return mlPrediction.category as Category;
     } else if (mlPrediction) {
       console.log(
-        `ML prediction for "${
-          transaction.description
-        }" not confident enough (${(mlPrediction.confidence * 100).toFixed(
-          0
-        )}%)`
+        `ML prediction for "${transaction.description}" not confident enough (${(mlPrediction.confidence * 100).toFixed(0)}%)`
       );
     }
-
-    // Not confident? Mark as 'other' for user to review
     return 'other';
   }
 
@@ -62,18 +116,15 @@ export function useTransactions() {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  // Add transaction
-  function addTransaction(transaction: Omit<Transaction, 'id'>) {
+  async function addTransaction(transaction: Omit<Transaction, 'id'>) {
     const id = generateId();
-    const newTransaction: Transaction = {
-      ...transaction,
-      id,
-    };
+    const newTransaction: Transaction = { ...transaction, id };
     transactions.value.push(newTransaction);
+    await db.transactions.add(newTransaction);
+    scheduleRecurringDetection();
   }
 
-  // Add multiple transactions (for CSV import)
-  function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
+  async function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
     const existingSignatures = new Set(
       transactions.value.map(
         (t) => `${t.date.toISOString()}|${t.amount}|${t.description}`
@@ -87,30 +138,30 @@ export function useTransactions() {
 
     if (uniqueNewTransactions.length === 0) return 0;
 
-    const withIds = uniqueNewTransactions.map((t) => {
-      const id = generateId();
+    const withIds: Transaction[] = uniqueNewTransactions.map((t) => ({
+      ...t,
+      id: generateId(),
+    }));
 
-      return {
-        ...t,
-        id,
-      };
-    });
-    transactions.value.push(...withIds);
+    for (let i = 0; i < withIds.length; i += CHUNK_SIZE) {
+      const chunk = withIds.slice(i, i + CHUNK_SIZE);
+      transactions.value.push(...chunk);
+      await db.transactions.bulkAdd(chunk);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
 
-    // Train ML model ONLY on non-'other' transactions
     const trainingSamples = transactions.value.filter(
       (t) => t.category !== 'other'
     );
-
     if (trainingSamples.length > 0) {
       mlCategory.train(trainingSamples);
     }
 
+    scheduleRecurringDetection();
     return uniqueNewTransactions.length;
   }
 
-  // Update transaction category (trains ML model automatically)
-  function updateTransactionCategory(
+  async function updateTransactionCategory(
     id: string,
     category: Category,
     shouldLearn = true
@@ -118,41 +169,40 @@ export function useTransactions() {
     const transaction = transactions.value.find((t) => t.id === id);
     if (!transaction) return;
 
-    // Train ML model on user corrections (skip if setting to 'other')
-    if (
-      shouldLearn &&
-      transaction.category !== category &&
-      category !== 'other'
-    ) {
+    if (shouldLearn && transaction.category !== category && category !== 'other') {
       mlCategory.trainSample({ ...transaction, category });
     }
 
-    transactions.value = transactions.value.map((t) =>
-      t.id === id ? { ...t, category } : t
-    );
+    transaction.category = category;
+    await db.transactions.update(id, { category });
+    scheduleRecurringDetection();
   }
 
-  // Delete transaction
-  const deleteTransaction = (id: string) => {
-    transactions.value = transactions.value.filter((t) => t.id !== id);
-  };
+  async function deleteTransaction(id: string) {
+    const index = transactions.value.findIndex((t) => t.id === id);
+    if (index !== -1) transactions.value.splice(index, 1);
+    await db.transactions.delete(id);
+    scheduleRecurringDetection();
+  }
 
-  // Clear all transactions
-  const clearAllTransactions = () => {
+  async function clearAllTransactions() {
     transactions.value = [];
-  };
+    recurringPayments.value = [];
+    await db.transactions.clear();
+    await db.recurringPayments.clear();
+    await db.recurringCacheMeta.clear();
+  }
 
-  // Get expenses only (negative amounts)
-  const expenses = computed(() => {
-    return transactions.value.filter((t) => t.amount < 0);
-  });
+  async function getOldestTransactionDate(): Promise<Date | null> {
+    if (!import.meta.client) return null;
+    await ensureLoaded();
+    const oldest = await db.transactions.orderBy('date').first();
+    return oldest?.date ?? null;
+  }
 
-  // Get income only (positive amounts)
-  const income = computed(() => {
-    return transactions.value.filter((t) => t.amount > 0);
-  });
+  const expenses = computed(() => transactions.value.filter((t) => t.amount < 0));
+  const income = computed(() => transactions.value.filter((t) => t.amount > 0));
 
-  // Calculate category statistics
   const categoryStats = computed((): CategoryStats[] => {
     const expenseTransactions = expenses.value;
     const total = Math.abs(
@@ -160,9 +210,7 @@ export function useTransactions() {
     );
 
     const statsByCategory = expenseTransactions.reduce((acc, t) => {
-      if (!acc[t.category]) {
-        acc[t.category] = { total: 0, count: 0 };
-      }
+      if (!acc[t.category]) acc[t.category] = { total: 0, count: 0 };
       acc[t.category].total += Math.abs(t.amount);
       acc[t.category].count += 1;
       return acc;
@@ -181,10 +229,7 @@ export function useTransactions() {
 
   const currentMonthRange = computed(() => {
     const now = new Date();
-    return {
-      start: startOfMonth(now),
-      end: endOfMonth(now),
-    };
+    return { start: startOfMonth(now), end: endOfMonth(now) };
   });
 
   const monthlyTransactions = computed(() => {
@@ -202,220 +247,23 @@ export function useTransactions() {
 
   const monthlyCategoryTotals = computed(() => {
     return monthlyExpenses.value.reduce((acc, transaction) => {
-      if (!acc[transaction.category]) {
-        acc[transaction.category] = 0;
-      }
+      if (!acc[transaction.category]) acc[transaction.category] = 0;
       acc[transaction.category] += Math.abs(transaction.amount);
       return acc;
     }, {} as Record<Category, number>);
   });
 
-  // Cached recurring payments for performance
-  const cachedRecurring = useLocalStorage<RecurringPayment[]>(
-    'my-pocket:recurring-payments',
-    [],
-    {
-      serializer: {
-        read: (v) => {
-          if (!v) return [];
-          const parsed = JSON.parse(v) as RecurringPayment[];
-          // Convert date strings back to Date objects
-          return parsed.map((rp) => ({
-            ...rp,
-            lastDate: new Date(rp.lastDate),
-            nextExpectedDate: rp.nextExpectedDate
-              ? new Date(rp.nextExpectedDate)
-              : undefined,
-          }));
-        },
-        write: (v) => JSON.stringify(v),
-      },
-    }
-  );
+  // Thin wrapper kept for backward compat — callers that wrap this in
+  // computed() will track the reactive recurringPayments ref automatically.
+  const detectRecurringPayments = () => recurringPayments.value;
 
-  // Detect recurring payments (both expenses and income)
-  const detectRecurringPayments = (
-    forceRefresh = false
-  ): RecurringPayment[] => {
-    // if (!forceRefresh && cachedRecurring.value.length > 0) {
-    //   return cachedRecurring.value;
-    // }
+  // Force a fresh worker run (e.g. called from UI refresh buttons).
+  const refreshRecurringPatterns = () => scheduleRecurringDetection();
 
-    const recurring: RecurringPayment[] = [];
-
-    // Group by merchant/description with fuzzy matching
-    const merchantGroups = new Map<string, Transaction[]>();
-
-    const clamp = (value: number, min: number, max: number) =>
-      Math.max(min, Math.min(max, value));
-
-    // Rounds to 1/2/5 * 10^n steps ("nice" human-ish bucket sizes)
-    const niceStep = (raw: number) => {
-      if (!Number.isFinite(raw) || raw <= 0) return 1;
-      const exponent = Math.pow(10, Math.floor(Math.log10(raw)));
-      const fraction = raw / exponent;
-      const niceFraction =
-        fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
-      return niceFraction * exponent;
-    };
-
-    const getAmountBucket = (amountAbs: number) => {
-      if (!Number.isFinite(amountAbs) || amountAbs <= 0) return 0;
-
-      // Relative tolerance: scales with the magnitude.
-      // Example: ~€45 bucket step for €3000 (1.5%), ~€0.25–€0.5 for small amounts.
-      const rawStep = amountAbs * 0.015;
-      const step = clamp(niceStep(rawStep), 0.25, 100);
-      const bucket = Math.round(amountAbs / step) * step;
-
-      // Avoid floating-point artifacts in Map keys.
-      return Number(bucket.toFixed(2));
-    };
-
-    for (const t of transactions.value) {
-      const description = t.description ?? '';
-      const normalizedDescription = description
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .trim();
-
-      // const amountRounded = Math.round(
-      //   Math.sign(t.amount) * Math.exp(Math.round(Math.log(Math.abs(t.amount))))
-      // );
-
-      // Amount bucketing that scales with amount magnitude
-      const absAmount = Math.abs(t.amount);
-      const amountBucket = getAmountBucket(absAmount);
-
-      // Try to find similar existing merchant (fuzzy matching)
-      let matchedMerchant = normalizedDescription;
-      for (const existingKey of merchantGroups.keys()) {
-        const existingMerchant = existingKey.split('|')[0] ?? '';
-        if (!existingMerchant) continue;
-        const similarity = getSimilarity(
-          normalizedDescription,
-          existingMerchant
-        );
-        // If similarity is above 80%, consider them the same merchant
-        if (similarity > 0.8) {
-          matchedMerchant = existingMerchant;
-          break;
-        }
-      }
-
-      const key = `${matchedMerchant}|${amountBucket}`;
-
-      if (!merchantGroups.has(key)) {
-        merchantGroups.set(key, []);
-      }
-      merchantGroups.get(key)!.push(t);
-    }
-
-    // Analyze each merchant group
-    for (const [merchant, groupTxns] of merchantGroups.entries()) {
-      if (groupTxns.length < 2) continue;
-
-      const firstTxn = groupTxns[0];
-      if (!firstTxn) continue;
-
-      // Sort by date
-      const sortedTransactions = groupTxns.sort(
-        (a, b) => a.date.getTime() - b.date.getTime()
-      );
-
-      // Calculate intervals between transactions (in days)
-      const intervals: number[] = [];
-      for (let i = 1; i < sortedTransactions.length; i++) {
-        const curr = sortedTransactions[i];
-        const prev = sortedTransactions[i - 1];
-        if (!curr || !prev) continue;
-        const daysDiff =
-          (curr.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
-        intervals.push(daysDiff);
-      }
-
-      const avgInterval =
-        intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
-
-      // Check amount consistency
-      const amounts = sortedTransactions.map((t) => t.amount);
-      const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-      const amountStdDev = Math.sqrt(
-        amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) /
-          amounts.length
-      );
-
-      // Determine frequency based on average interval
-      let frequency: 'weekly' | 'monthly' | 'yearly' | 'daily' | 'one-time';
-      if (avgInterval <= 2) frequency = 'daily';
-      else if (avgInterval <= 10) frequency = 'weekly';
-      else if (avgInterval <= 45) frequency = 'monthly';
-      else frequency = 'yearly';
-
-      const lastTxn = sortedTransactions[sortedTransactions.length - 1];
-      if (!lastTxn) continue;
-
-      // Use the most recent merchant name
-      const displayMerchant = lastTxn.description.split('\n')[0] ?? merchant;
-
-      const confidence = mlRecurring.predict({
-        amount: avgAmount,
-        frequency,
-        intervals,
-        count: sortedTransactions.length,
-        merchant: displayMerchant,
-        amountStdDev,
-        lastDate: lastTxn.date.toISOString(),
-      });
-
-      if (confidence < 0.2) continue;
-
-      recurring.push({
-        merchant: displayMerchant,
-        amount: avgAmount,
-        category: lastTxn.category,
-        frequency,
-        lastDate: lastTxn.date,
-        nextExpectedDate: new Date(
-          lastTxn.date.getTime() + avgInterval * 24 * 60 * 60 * 1000
-        ),
-        intervals,
-        count: sortedTransactions.length,
-        confidence: Math.min(1.0, confidence), // Cap at 100%
-        amountStdDev,
-      });
-    }
-
-    console.log(
-      recurring.map((r) => ({
-        ...r,
-        recurring: r.confidence > 0.5,
-      }))
-    );
-
-    // Sort by absolute amount (largest first)
-    const sortedRecurring = recurring.sort(
-      (a, b) => Math.abs(b.amount) - Math.abs(a.amount)
-    );
-
-    // Cache the results in memory and localStorage
-    cachedRecurring.value = sortedRecurring;
-
-    return sortedRecurring;
-  };
-
-  // Trigger recurring detection when transactions change
-  const refreshRecurringPatterns = () => {
-    detectRecurringPayments(true);
-  };
-
-  // Generate insights (using utility functions)
   const generateInsights = (): Insight[] => {
-    const recurring = detectRecurringPayments();
-    const recurringInsights = generateRecurringInsights(recurring);
+    const recurringInsights = generateRecurringInsights(recurringPayments.value);
     const categoryInsights = generateCategoryInsights(categoryStats.value);
 
-    // Convert InsightMessages to legacy Insight format
     const allMessages = [...recurringInsights, ...categoryInsights];
     return allMessages.map((msg) => ({
       type: msg.type as 'anomaly' | 'trend' | 'recurring' | 'achievement',
@@ -431,6 +279,9 @@ export function useTransactions() {
 
   return {
     transactions,
+    isLoaded,
+    recurringPayments,
+    isComputingRecurring,
     expenses,
     income,
     monthlyTransactions,
@@ -443,9 +294,32 @@ export function useTransactions() {
     updateTransactionCategory,
     deleteTransaction,
     clearAllTransactions,
+    getOldestTransactionDate,
     categorizeTransaction: autoCategorize,
     detectRecurringPayments,
     refreshRecurringPatterns,
     generateInsights,
   };
+}
+
+export function useTransactionsByMonth(month: Ref<Date>) {
+  const monthTransactions = ref<Transaction[]>([]);
+  const isLoading = ref(true);
+
+  const load = async () => {
+    if (!import.meta.client) return;
+    await ensureLoaded();
+    isLoading.value = true;
+    const start = startOfMonth(month.value);
+    const end = endOfMonth(month.value);
+    monthTransactions.value = await db.transactions
+      .where('date')
+      .between(start, end, true, true)
+      .toArray();
+    isLoading.value = false;
+  };
+
+  watch(month, load, { immediate: true });
+
+  return { monthTransactions, isLoading, refresh: load };
 }

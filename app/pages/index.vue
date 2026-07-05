@@ -1,134 +1,115 @@
 <template>
   <div class="space-y-6">
     <!-- Budget Estimate Section -->
-    <UiCard
-      :class="[
-        budgetStatus === 'over'
-          ? '!bg-gradient-to-br !from-rose-500 !to-red-600 !border-rose-500'
-          : '!bg-gradient-to-br !from-indigo-500 !to-purple-600 !border-indigo-500',
-        'text-white',
-      ]"
-      padding="p-8"
-    >
+    <UiCard padding="p-8">
       <!-- Header -->
-      <div class="mb-8">
-        <p class="text-xs uppercase tracking-wider opacity-70 mb-3">
+      <div class="mb-6">
+        <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
           Remaining Budget This Month
         </p>
-        <h1 class="text-6xl font-bold mb-3">
+        <h1
+          class="text-6xl font-bold mb-3 tabular-nums"
+          :class="budgetStatus === 'over' ? 'text-rose-500' : 'text-stone-900 dark:text-stone-100'"
+        >
           {{ formatMoney(remainingThisMonth) }}
         </h1>
-        <div class="flex items-center gap-3 text-sm opacity-90">
-          <span
-            >Day {{ monthProgress.daysElapsed }}/{{
-              monthProgress.daysTotal
-            }}</span
-          >
-          <span>•</span>
+        <div class="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
+          <span>Day {{ monthProgress.daysElapsed }}/{{ monthProgress.daysTotal }}</span>
+          <span>·</span>
           <span class="font-medium">{{ budgetPaceMessage }}</span>
         </div>
       </div>
 
       <!-- Budget Progress Bar -->
-      <div class="mb-8">
-        <div
-          class="flex items-center justify-between text-xs mb-3 opacity-80 font-medium"
-        >
+      <div class="mb-7">
+        <div class="flex items-center justify-between text-xs mb-2 text-stone-500 dark:text-stone-400">
           <span>Budget Usage</span>
           <span>{{ Math.round(budgetUsagePercent) }}%</span>
         </div>
-        <div
-          class="h-5 bg-black/20 rounded-full overflow-hidden flex shadow-inner"
-        >
+        <div class="h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden flex">
           <div
-            class="bg-amber-400"
+            class="bg-violet-500"
             :style="{ width: `${fixedCostsPercent}%` }"
             :title="`Fixed: ${formatMoney(recurringBurn)}`"
-          ></div>
+          />
           <div
-            class="bg-yellow-300"
+            class="bg-violet-300"
             :style="{ width: `${discretionaryPercent}%` }"
             :title="`Variable: ${formatMoney(discretionarySpent)}`"
-          ></div>
+          />
         </div>
-        <div class="flex items-center gap-6 text-xs mt-3 opacity-90">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-sm bg-amber-400"></div>
+        <div class="flex items-center gap-5 text-xs mt-2 text-stone-500 dark:text-stone-400">
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-violet-500" />
             <span>Fixed {{ Math.round(fixedCostsPercent) }}%</span>
           </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-sm bg-yellow-300"></div>
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-violet-300" />
             <span>Variable {{ Math.round(discretionaryPercent) }}%</span>
           </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-sm bg-white/30"></div>
-            <span
-              >Left
-              {{ Math.round(Math.max(0, 100 - budgetUsagePercent)) }}%</span
-            >
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-700" />
+            <span>Left {{ Math.round(Math.max(0, 100 - budgetUsagePercent)) }}%</span>
           </div>
         </div>
       </div>
 
       <!-- Budget Breakdown -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div class="bg-white/10 rounded-lg p-4">
-          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="bg-stone-50 dark:bg-stone-800/60 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Expected Income
           </p>
-          <p class="text-2xl font-bold mb-1">+{{ formatMoney(baseIncome) }}</p>
-          <p v-if="recurringIncomeAmount > 0" class="text-xs opacity-70">
-            {{ monthlyIncomeTotal > 0 ? 'Recurring' : 'Estimated' }}
+          <p class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+            +{{ formatMoney(baseIncome) }}
           </p>
         </div>
-        <div class="bg-amber-400/20 rounded-lg p-4 border border-amber-400/30">
-          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+        <div class="bg-stone-50 dark:bg-stone-800/60 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Fixed Costs
           </p>
-          <p class="text-2xl font-bold mb-1 text-amber-300">
+          <p class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(recurringBurn) }}
           </p>
-          <p class="text-xs opacity-70">Monthly recurring</p>
+          <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Monthly recurring</p>
         </div>
-        <div
-          class="bg-yellow-300/20 rounded-lg p-4 border border-yellow-300/30"
-        >
-          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+        <div class="bg-stone-50 dark:bg-stone-800/60 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Variable
           </p>
-          <p class="text-2xl font-bold mb-1 text-yellow-200">
+          <p class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(discretionarySpent) }}
           </p>
-          <p class="text-xs opacity-70">Non-recurring</p>
+          <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Non-recurring</p>
         </div>
-        <div class="bg-white/10 rounded-lg p-4">
-          <p class="text-[10px] uppercase tracking-wider opacity-70 mb-2">
+        <div class="bg-stone-50 dark:bg-stone-800/60 rounded-lg p-4">
+          <p class="text-[10px] uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
             Savings Goal
           </p>
-          <p class="text-2xl font-bold mb-1">
+          <p class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
             {{ formatMoney(targetSavings) }}
           </p>
-          <p class="text-xs opacity-70">20% of income</p>
+          <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">20% of income</p>
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="mt-6 pt-6 border-t border-white/20">
-        <div class="flex items-center justify-between">
-          <span class="text-sm opacity-90">
-            {{
-              remainingThisMonth > 0
-                ? `${formatMoney(
-                    remainingThisMonth /
-                      (monthProgress.daysTotal - monthProgress.daysElapsed + 1)
-                  )} per day for rest of month`
-                : 'Over budget - reduce spending'
-            }}
-          </span>
-          <span class="text-sm font-bold px-3 py-1.5 rounded-full bg-white/20">
-            {{ budgetStatus === 'over' ? '🚨 Over budget' : '✅ On track' }}
-          </span>
-        </div>
+      <div class="mt-6 pt-5 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between">
+        <span class="text-sm text-stone-500 dark:text-stone-400">
+          {{
+            remainingThisMonth > 0
+              ? `${formatMoney(remainingThisMonth / (monthProgress.daysTotal - monthProgress.daysElapsed + 1))} per day left`
+              : 'Over budget — reduce spending'
+          }}
+        </span>
+        <span
+          class="text-xs font-medium px-2.5 py-1 rounded-full"
+          :class="budgetStatus === 'over'
+            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+            : 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400'"
+        >
+          {{ budgetStatus === 'over' ? 'Over budget' : 'On track' }}
+        </span>
       </div>
     </UiCard>
 
@@ -138,67 +119,48 @@
       <UiCard>
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p
-              class="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider"
-            >
+            <p class="text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider">
               Monthly Spending
             </p>
-            <h3 class="text-xl font-bold text-black dark:text-white mt-1">
+            <h3 class="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1">
               {{ formatMoney(monthlyExpenseTotal) }}
-              <span
-                class="text-sm font-normal text-neutral-600 dark:text-neutral-400"
-              >
-                total
-              </span>
+              <span class="text-sm font-normal text-stone-500 dark:text-stone-400">total</span>
             </h3>
           </div>
-          <NuxtLink
-            to="/transactions"
-            class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
+          <NuxtLink to="/transactions" class="text-xs text-violet-600 dark:text-violet-400 hover:underline">
             View all →
           </NuxtLink>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-1">
           <article
             v-for="item in allSpendingByCategory"
             :key="item.category"
-            class="flex items-center justify-between py-2"
+            class="flex items-center justify-between py-2.5"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <span class="text-2xl">{{
-                CATEGORIES[item.category]?.icon
-              }}</span>
+              <span class="text-xl leading-none">{{ CATEGORIES[item.category]?.icon }}</span>
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <p
-                    class="font-medium text-black dark:text-white text-sm capitalize"
-                  >
-                    {{ item.category }}
-                  </p>
-                </div>
-                <p class="text-xs text-neutral-600 dark:text-neutral-400">
-                  {{ item.count }}
-                  {{ item.count === 1 ? 'transaction' : 'transactions' }}
+                <p class="font-medium text-stone-900 dark:text-stone-100 text-sm capitalize">
+                  {{ item.category }}
+                </p>
+                <p class="text-xs text-stone-500 dark:text-stone-400">
+                  {{ item.count }} {{ item.count === 1 ? 'transaction' : 'transactions' }}
                 </p>
               </div>
-              <div class="text-right">
-                <p class="text-sm font-semibold text-rose-500">
+              <div class="text-right shrink-0">
+                <p class="text-sm font-semibold text-rose-500 tabular-nums">
                   -{{ formatMoney(item.total) }}
                 </p>
-                <p class="text-xs text-neutral-600 dark:text-neutral-400">
+                <p class="text-xs text-stone-500 dark:text-stone-400">
                   {{ Math.round(item.percentage) }}%
                 </p>
               </div>
             </div>
           </article>
 
-          <div
-            v-if="allSpendingByCategory.length === 0"
-            class="text-center py-8 text-neutral-600 dark:text-neutral-400"
-          >
-            No spending yet this month ✨
+          <div v-if="allSpendingByCategory.length === 0" class="text-center py-8 text-stone-500 dark:text-stone-400">
+            No spending yet this month
           </div>
         </div>
       </UiCard>
@@ -206,21 +168,19 @@
       <!-- Fixed Costs -->
       <UiCard>
         <div class="mb-4">
-          <p
-            class="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider"
-          >
+          <p class="text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider">
             Fixed Monthly Costs
           </p>
-          <h3 class="text-xl font-bold text-black dark:text-white mt-1">
+          <h3 class="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1 tabular-nums">
             {{ formatMoney(recurringBurn) }}
           </h3>
         </div>
 
-        <div class="space-y-2">
+        <div class="space-y-1">
           <article
             v-for="payment in recurringExpenses.slice(0, 6)"
             :key="payment.merchant"
-            class="flex items-center justify-between py-2"
+            class="flex items-center justify-between py-2.5"
           >
             <div class="flex items-center gap-2 min-w-0">
               <TransactionLogo
@@ -228,13 +188,11 @@
                 :fallback="CATEGORIES[payment.category]?.icon"
                 size="sm"
               />
-              <span class="text-sm truncate text-black dark:text-white">
+              <span class="text-sm truncate text-stone-900 dark:text-stone-100">
                 {{ payment.merchant }}
               </span>
             </div>
-            <span
-              class="text-sm font-medium text-neutral-700 dark:text-neutral-300"
-            >
+            <span class="text-sm font-medium text-stone-600 dark:text-stone-300 tabular-nums shrink-0 ml-3">
               {{ formatMoney(normalizeRecurring(payment)) }}
             </span>
           </article>
@@ -242,7 +200,7 @@
           <NuxtLink
             v-if="recurringExpenses.length > 6"
             to="/recurring"
-            class="block text-xs text-indigo-600 dark:text-indigo-400 hover:underline pt-2"
+            class="block text-xs text-violet-600 dark:text-violet-400 hover:underline pt-2"
           >
             View all {{ recurringExpenses.length }} recurring expenses →
           </NuxtLink>
@@ -252,58 +210,46 @@
 
     <!-- Insights & Reports Section -->
     <UiCard>
-      <div class="mb-4">
-        <h2 class="text-xl font-bold text-black dark:text-white">
-          💡 Financial Insights
-        </h2>
-        <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-          AI-powered analysis of your spending patterns
+      <div class="mb-5">
+        <h2 class="text-lg font-semibold text-stone-900 dark:text-stone-100">Financial Insights</h2>
+        <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+          Analysis of your spending patterns
         </p>
       </div>
 
-      <div class="space-y-3">
+      <div class="space-y-2">
         <article
           v-for="insight in allInsights"
           :key="insight.id"
-          class="p-4 rounded-lg border transition-all"
+          class="py-3 pl-4 border-l-2 transition-all"
           :class="{
-            'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950':
-              insight.severity === 'success',
-            'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950':
-              insight.severity === 'info',
-            'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950':
-              insight.severity === 'warning',
-            'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950':
-              insight.severity === 'danger',
+            'border-emerald-500': insight.severity === 'success',
+            'border-violet-500': insight.severity === 'info',
+            'border-amber-500': insight.severity === 'warning',
+            'border-rose-500': insight.severity === 'danger',
           }"
         >
           <p
-            class="text-xs uppercase font-medium tracking-wider mb-1"
+            class="text-[10px] uppercase font-semibold tracking-wider mb-0.5"
             :class="{
-              'text-emerald-600 dark:text-emerald-400':
-                insight.severity === 'success',
-              'text-blue-600 dark:text-blue-400': insight.severity === 'info',
-              'text-amber-600 dark:text-amber-400':
-                insight.severity === 'warning',
+              'text-emerald-600 dark:text-emerald-400': insight.severity === 'success',
+              'text-violet-600 dark:text-violet-400': insight.severity === 'info',
+              'text-amber-600 dark:text-amber-400': insight.severity === 'warning',
               'text-rose-600 dark:text-rose-400': insight.severity === 'danger',
             }"
           >
             {{ insight.type }}
           </p>
-          <p class="font-bold text-base text-black dark:text-white">
+          <p class="font-semibold text-sm text-stone-900 dark:text-stone-100">
             {{ insight.title }}
           </p>
-          <p class="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
+          <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
             {{ insight.description }}
           </p>
         </article>
 
-        <div
-          v-if="allInsights.length === 0"
-          class="text-center py-8 text-neutral-600 dark:text-neutral-400"
-        >
-          <p class="text-3xl mb-2">✨</p>
-          <p>Add more transactions to get personalized insights</p>
+        <div v-if="allInsights.length === 0" class="text-center py-8 text-stone-500 dark:text-stone-400">
+          Add more transactions to get personalized insights
         </div>
       </div>
     </UiCard>

@@ -117,12 +117,12 @@ watch([form.description], (newDesc) => {
   }
 });
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const amount = form.isExpense
     ? -Math.abs(form.amount)
     : Math.abs(form.amount);
 
-  addTransaction({
+  await addTransaction({
     description: form.description,
     amount,
     category: form.category,
