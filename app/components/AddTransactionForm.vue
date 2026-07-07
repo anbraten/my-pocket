@@ -60,7 +60,9 @@
     </div>
 
     <div v-if="accountOptions.length > 1">
-      <label class="block text-sm font-medium text-black dark:text-white mb-2">Account</label>
+      <label class="block text-sm font-medium text-black dark:text-white mb-2"
+        >Account</label
+      >
       <UiSelect v-model="form.accountId" :options="accountOptions" />
     </div>
 
@@ -86,21 +88,22 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const { addTransaction, categorizeTransaction } = useTransactions();
+const { addTransaction } = useTransactions();
 const { currency } = useCurrency();
 const { accountOptions } = useAccounts();
+const categoryDetection = useCategoryDetection();
 
 const categoryOptions = computed(() =>
   Object.entries(CATEGORIES).map(([key, { icon }]) => ({
     label: `${icon} ${key.charAt(0).toUpperCase() + key.slice(1)}`,
     value: key,
-  }))
+  })),
 );
 
 const currencySymbol = computed(
   () =>
     CURRENCY_OPTIONS.find((option) => option.value === currency.value)
-      ?.symbol ?? '$'
+      ?.symbol ?? '$',
 );
 
 const today = new Date().toISOString().split('T')[0];
@@ -114,12 +117,14 @@ const form = reactive({
   accountId: '',
 });
 
-watch([form.description], (newDesc) => {
-  if (newDesc.length > 3) {
-    form.category = categorizeTransaction({
+watch([form.description], (newData) => {
+  const newDesc = newData[0];
+  if (newDesc && newDesc.length > 3) {
+    form.category = categoryDetection.predict({
       ...form,
-      date: new Date(form.date!),
-      id: '',
+      id: 'temp-id',
+      date: new Date(),
+      description: newDesc,
     });
   }
 });
@@ -134,8 +139,7 @@ const handleSubmit = async () => {
     amount,
     category: form.category,
     date: form.date ? new Date(form.date) : new Date(),
-    merchant: form.description.split(' ').slice(0, 3).join(' '),
-    ...(form.accountId ? { accountId: form.accountId } : {}),
+    accountId: form.accountId || undefined,
   });
 
   emit('close');

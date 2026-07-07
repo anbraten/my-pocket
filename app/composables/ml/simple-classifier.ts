@@ -74,6 +74,14 @@ export class SimpleClassifier {
     return bestCategory ? { category: bestCategory, confidence } : null;
   }
 
+  public serialize() {
+    return {
+      model: this.model,
+      categoryCounts: this.categoryCounts,
+      totalDocs: this.totalDocs,
+    };
+  }
+
   private tokenize(text: string): string[] {
     return text
       .toLowerCase()

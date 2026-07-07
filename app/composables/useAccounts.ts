@@ -46,7 +46,10 @@ export function useAccounts() {
     return newAccount;
   }
 
-  async function updateAccount(id: string, changes: Partial<Omit<Account, 'id'>>) {
+  async function updateAccount(
+    id: string,
+    changes: Partial<Omit<Account, 'id'>>,
+  ) {
     await db.accounts.update(id, changes);
     const idx = accounts.value.findIndex((a) => a.id === id);
     const existing = accounts.value[idx];
@@ -67,8 +70,8 @@ export function useAccounts() {
   }
 
   const accountOptions = computed(() => [
-    { label: 'No account', value: '' },
     ...accounts.value.map((a) => ({ label: a.name, value: a.id })),
+    { label: 'No account', value: '' },
   ]);
 
   return {

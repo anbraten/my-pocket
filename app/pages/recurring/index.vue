@@ -58,7 +58,7 @@
             Largest expense
           </p>
           <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
-            {{ topRecurring?.merchant || '—' }}
+            {{ topRecurring ? getFirstLine(topRecurring.merchant) : '—' }}
           </p>
           <p
             v-if="topRecurring"
@@ -140,48 +140,40 @@
         <article
           v-for="payment in sortedRecurring"
           :key="payment.merchant"
-          class="py-4 flex items-center gap-4 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg transition-colors px-2 -mx-2"
+          class="p-4 flex items-start gap-4 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
           @click="showTransactions(payment)"
         >
           <TransactionLogo
-            :name="payment.merchant"
+            :name="getFirstLine(payment.merchant)"
             :fallback="CATEGORIES[payment.category]?.icon"
             size="md"
+            class="mt-1"
           />
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <p class="font-medium text-stone-900 dark:text-stone-100">
-                {{ payment.merchant }}
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-medium truncate text-stone-900 dark:text-stone-100" :title="payment.merchant">
+                {{ getFirstLine(payment.merchant) }}
               </p>
               <span
                 :class="[
-                  'text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider',
+                  'text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider shrink-0',
                   getStatus(payment).color,
                 ]"
               >
                 {{ getStatus(payment).label }}
               </span>
             </div>
-            <p class="text-xs text-stone-500 dark:text-stone-400 capitalize">
+            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1 capitalize">
               {{ payment.frequency }} •
               <span :class="{ 'text-rose-500': payment.confidence < 0.5 }">
                 {{ formatConfidence(payment.confidence) }}
               </span>
-              • {{ payment.count }} times
-            </p>
-            <p class="text-xs text-stone-500 dark:text-stone-400">
-              Next on
-              {{ formatDate(payment.nextExpectedDate || payment.lastDate) }} ({{
-                formatDistanceToNow(
-                  payment.nextExpectedDate || payment.lastDate,
-                  { addSuffix: true },
-                )
-              }})
+              • next {{ formatDistanceToNow(payment.nextExpectedDate || payment.lastDate, { addSuffix: true }) }}
             </p>
           </div>
-          <div class="text-right">
+          <div class="text-right shrink-0">
             <p
-              class="text-base font-semibold tabular-nums"
+              class="font-semibold tabular-nums"
               :class="
                 payment.amount > 0
                   ? 'text-emerald-600 dark:text-emerald-400'
@@ -191,7 +183,7 @@
               {{ payment.amount > 0 ? '+' : '-'
               }}{{ formatMoney(Math.abs(normalizeRecurring(payment))) }}
             </p>
-            <p class="text-xs text-stone-500 dark:text-stone-400">monthly</p>
+            <p class="text-xs text-stone-500 dark:text-stone-400">/ month</p>
           </div>
         </article>
         <div
@@ -265,6 +257,8 @@ import { CATEGORIES, type Category } from '~/utils/categories';
 import type { RecurringPayment } from '~/types';
 
 const { recurringPayments, refreshRecurringPatterns } = useRecurring();
+
+const getFirstLine = (text: string) => text.split('\n')[0] || text;
 
 const { formatCurrency } = useCurrency();
 
@@ -428,7 +422,7 @@ const nextCharge = computed(() => {
   const date = next.nextExpectedDate || next.lastDate;
   return {
     label: amount,
-    detail: `${next.merchant} on ${format(date, 'MMM d')}`,
+    detail: `${getFirstLine(next.merchant)} on ${format(date, 'MMM d')}`,
   };
 });
 

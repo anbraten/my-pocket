@@ -1,7 +1,6 @@
 import { endOfMonth, startOfMonth } from 'date-fns';
 import type { Transaction } from '~/types';
-import { type Category, categorizeTransaction } from '~/utils/categories';
-import { useCategoryML } from '~/composables/useCategoryML';
+import { type Category } from '~/utils/categories';
 import { db } from '~/utils/db';
 import { scheduleRecurringDetection } from './useRecurring';
 
@@ -15,15 +14,7 @@ function bumpVersion() {
 }
 
 export function useTransactions() {
-  const mlCategory = useCategoryML();
-
-  function autoCategorize(transaction: Transaction): Category {
-    const mlPrediction = mlCategory.predict(transaction);
-    if (mlPrediction && mlPrediction.confidence > 0.6) {
-      return mlPrediction.category as Category;
-    }
-    return categorizeTransaction(transaction.description);
-  }
+  const categoryDetection = useCategoryDetection();
 
   function generateId() {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -60,6 +51,7 @@ export function useTransactions() {
     const toAdd: Omit<Transaction, 'id'>[] = [];
     let tagged = 0;
 
+    // TODO: use some database query / index directly to find duplicates instead of loading all into memory.
     for (const t of newTransactions) {
       const sig = `${t.date.toISOString()}|${t.amount}|${t.description}`;
       const match = signatureMap.get(sig);
@@ -92,7 +84,7 @@ export function useTransactions() {
         .notEqual('other')
         .toArray();
       if (trainingSamples.length > 0) {
-        mlCategory.train(trainingSamples);
+        categoryDetection.train(trainingSamples);
       }
 
       bumpVersion();
@@ -146,7 +138,7 @@ export function useTransactions() {
     if (!current) return;
 
     if (shouldLearn && current.category !== category && category !== 'other') {
-      mlCategory.trainSample({ ...current, category });
+      categoryDetection.trainSample({ ...current, category });
     }
 
     await db.transactions.update(id, { category });
@@ -160,7 +152,7 @@ export function useTransactions() {
       .notEqual('other')
       .toArray();
     if (labeled.length > 0) {
-      mlCategory.train(labeled);
+      categoryDetection.train(labeled);
     }
 
     const uncategorized = await db.transactions
@@ -170,7 +162,7 @@ export function useTransactions() {
     let updated = 0;
 
     for (const t of uncategorized) {
-      const newCategory = autoCategorize(t);
+      const newCategory = categoryDetection.predict(t);
       if (newCategory !== 'other') {
         await db.transactions.update(t.id, { category: newCategory });
         updated++;
@@ -214,7 +206,6 @@ export function useTransactions() {
     deleteTransactionsByAccount,
     clearAllTransactions,
     getOldestTransactionDate,
-    categorizeTransaction: autoCategorize,
   };
 }
 

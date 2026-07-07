@@ -31,7 +31,7 @@
             Back to recurring
           </p>
           <h1 class="text-2xl font-semibold text-black dark:text-white">
-            {{ merchantName }}
+            {{ getFirstLine(merchantName) }}
           </h1>
         </div>
       </div>
@@ -116,37 +116,39 @@
         </span>
       </header>
 
-      <div class="space-y-2">
+      <div class="divide-y divide-stone-200 dark:divide-stone-800 -mx-6">
         <article
           v-for="transaction in relatedTransactions"
           :key="transaction.id"
-          class="py-3 px-3 flex items-center gap-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg transition-colors"
+          class="px-6 py-4 flex items-start gap-4 hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
         >
-          <div class="text-2xl">
-            {{ CATEGORIES[transaction.category]?.icon }}
-          </div>
-          <div class="flex-1">
+          <TransactionLogo
+            :name="getFirstLine(transaction.description)"
+            :fallback="CATEGORIES[transaction.category]?.icon"
+            size="md"
+            class="mt-1"
+          />
+          <div class="flex-1 min-w-0">
             <p
-              class="font-medium text-black dark:text-white whitespace-pre-wrap"
+              class="font-medium truncate text-stone-900 dark:text-stone-100"
+              :title="transaction.description"
             >
-              {{ transaction.description }}
+              {{ getFirstLine(transaction.description) }}
             </p>
-            <p class="text-xs text-stone-500 dark:text-stone-400">
+            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
               {{ format(transaction.date, 'MMM d, yyyy') }} •
               <span class="capitalize">{{ transaction.category }}</span>
             </p>
           </div>
-          <div class="text-right">
-            <p
-              class="text-lg font-semibold"
-              :class="
-                transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
-              "
-            >
-              {{ transaction.amount > 0 ? '+' : '-'
-              }}{{ formatMoney(Math.abs(transaction.amount)) }}
-            </p>
-          </div>
+          <p
+            class="font-semibold tabular-nums shrink-0"
+            :class="
+              transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
+            "
+          >
+            {{ transaction.amount > 0 ? '+' : '-'
+            }}{{ formatMoney(Math.abs(transaction.amount)) }}
+          </p>
         </article>
         <div
           v-if="relatedTransactions.length === 0"
@@ -169,6 +171,8 @@ const route = useRoute();
 const merchantName = computed(() =>
   decodeURIComponent(route.params.merchant as string),
 );
+
+const getFirstLine = (text: string) => text.split('\n')[0] || text;
 
 const { recurringPayments } = useRecurring();
 const { formatCurrency } = useCurrency();

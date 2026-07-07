@@ -1,5 +1,6 @@
 import type { Transaction } from '~/types';
-import { SimpleClassifier } from './ml/simple-classifier';
+import { SimpleClassifier } from '../ml/simple-classifier';
+import { normalizeDescription } from './keywordAnalyzer';
 
 export class CategoryClassifier {
   private classifier: SimpleClassifier;
@@ -24,19 +25,17 @@ export class CategoryClassifier {
   }
 
   public export(): any {
-    return {
-      model: this.classifier,
-    };
+    return this.classifier.serialize();
   }
 
   static import(data: any) {
     const classifier = new CategoryClassifier();
-    classifier.classifier = new SimpleClassifier(data.model);
+    classifier.classifier = new SimpleClassifier(data);
     return classifier;
   }
 
   private tokenizeTransaction(transaction: Transaction): string {
-    const descriptionTokens = this.tokenize(transaction.description);
+    const descriptionTokens = normalizeDescription(transaction.description);
     const amountBucket = this.getAmountBucket(transaction.amount);
     const dayOfMonth = transaction.date.getDate();
     return `${descriptionTokens} amount_${amountBucket} day_${dayOfMonth}`;
@@ -47,36 +46,5 @@ export class CategoryClassifier {
     if (amount < -1000) return 'large';
     if (amount < -500) return 'medium';
     return 'small';
-  }
-
-  private tokenize(text: string): string {
-    return text
-      .split(/\s+/)
-      .filter((word) => !word.match(/^\d+$/)) // remove number-like tokens
-      .filter((word) => !this.isStopWord(word))
-      .join(' ');
-  }
-
-  private isStopWord(word: string): boolean {
-    const stopWords = new Set([
-      'the',
-      'and',
-      'for',
-      'with',
-      'from',
-      'this',
-      'that',
-      'was',
-      'are',
-      'der',
-      'die',
-      'das',
-      'und',
-      'fur',
-      'mit',
-      'von',
-      'bei',
-    ]);
-    return stopWords.has(word);
   }
 }

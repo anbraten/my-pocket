@@ -18,7 +18,7 @@ export const BANK_PARSERS: Record<string, BankParser> = {
 
 export const parseCSV = (
   file: File,
-  parserNamer = 'generic'
+  parserNamer = 'generic',
 ): Promise<CSVRow[]> => {
   const parser = BANK_PARSERS[parserNamer];
   if (!parser) {
@@ -44,7 +44,7 @@ export const parseCSV = (
 
 // Detect which columns contain date, amount, and description
 export const detectColumns = (
-  rows: CSVRow[]
+  rows: CSVRow[],
 ): {
   dateColumn: string | null;
   amountColumn: string | null;
@@ -66,7 +66,7 @@ export const detectColumns = (
   ];
   const dateColumn =
     headers.find((h) =>
-      datePatterns.some((p) => h.toLowerCase().includes(p))
+      datePatterns.some((p) => h.toLowerCase().includes(p)),
     ) || null;
 
   // Common amount column names
@@ -81,7 +81,7 @@ export const detectColumns = (
   ];
   const amountColumn =
     headers.find((h) =>
-      amountPatterns.some((p) => h.toLowerCase().includes(p))
+      amountPatterns.some((p) => h.toLowerCase().includes(p)),
     ) || null;
 
   // Common description column names
@@ -96,7 +96,7 @@ export const detectColumns = (
   ];
   const descriptionColumn =
     headers.find((h) =>
-      descPatterns.some((p) => h.toLowerCase().includes(p))
+      descPatterns.some((p) => h.toLowerCase().includes(p)),
     ) || null;
 
   return { dateColumn, amountColumn, descriptionColumn };
@@ -165,7 +165,7 @@ export const parseAmount = (amountStr: string): number => {
 export const csvToTransactions = (
   rows: CSVRow[],
   parserNamer: string,
-  categorize: (transaction: Transaction) => any
+  categorize: (transaction: Transaction) => Transaction['category'],
 ): Omit<Transaction, 'id'>[] => {
   const parser = BANK_PARSERS[parserNamer];
   if (!parser) {
