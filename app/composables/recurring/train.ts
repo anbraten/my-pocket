@@ -1,5 +1,5 @@
 import { RecurringModel } from './model';
-import trans from './recurring.json' assert { type: 'json' };
+import trans from './recurring.json' with { type: 'json' };
 
 function omit<T, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> {
   const result = { ...obj };

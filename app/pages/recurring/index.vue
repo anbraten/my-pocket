@@ -3,10 +3,14 @@
     <UiCard as="section" padding="p-8">
       <div class="flex flex-wrap gap-6 items-end">
         <div>
-          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
+          <p
+            class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2"
+          >
             Monthly net
           </p>
-          <h1 class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+          <h1
+            class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ formatMoney(totalMonthly) }}
           </h1>
           <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">
@@ -15,7 +19,8 @@
           <div class="mt-3 flex gap-4 text-sm">
             <div>
               <span class="text-stone-500 dark:text-stone-400">Income: </span>
-              <span class="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums"
+              <span
+                class="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums"
                 >+{{ formatMoney(totalMonthlyIncome) }}</span
               >
             </div>
@@ -28,36 +33,57 @@
           </div>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1"
+          >
             Next transaction
           </p>
-          <h2 class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums">{{ nextCharge.label }}</h2>
-          <p class="text-sm text-stone-500 dark:text-stone-400">{{ nextCharge.detail }}</p>
+          <h2
+            class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
+            {{ nextCharge.label }}
+          </h2>
+          <p class="text-sm text-stone-500 dark:text-stone-400">
+            {{ nextCharge.detail }}
+          </p>
         </div>
       </div>
-      <div class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm">
+      <div
+        class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm"
+      >
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Largest expense
           </p>
           <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
             {{ topRecurring?.merchant || '—' }}
           </p>
-          <p v-if="topRecurring" class="text-stone-500 dark:text-stone-400 tabular-nums">
+          <p
+            v-if="topRecurring"
+            class="text-stone-500 dark:text-stone-400 tabular-nums"
+          >
             {{ formatMoney(Math.abs(normalizeRecurring(topRecurring))) }} /
             {{ topRecurring.frequency }}
           </p>
         </div>
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Average ticket
           </p>
-          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+          <p
+            class="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ formatMoney(averageRecurring) }}
           </p>
         </div>
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Confidence
           </p>
           <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
@@ -77,9 +103,37 @@
             Recurring Transactions
           </h3>
         </div>
-        <span class="ml-auto text-xs text-stone-500 dark:text-stone-400"
-          >{{ sortedRecurring.length }} scheduled</span
-        >
+        <div class="ml-auto flex items-center gap-2">
+          <span class="text-xs text-stone-500 dark:text-stone-400"
+            >{{ sortedRecurring.length }} scheduled</span
+          >
+          <div
+            class="flex rounded-lg border border-stone-200 dark:border-stone-700 overflow-hidden text-xs"
+          >
+            <button
+              class="px-2.5 py-1 transition-colors"
+              :class="
+                sortBy === 'due'
+                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-medium'
+                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+              "
+              @click="sortBy = 'due'"
+            >
+              Next due
+            </button>
+            <button
+              class="px-2.5 py-1 transition-colors border-l border-stone-200 dark:border-stone-700"
+              :class="
+                sortBy === 'amount'
+                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-medium'
+                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+              "
+              @click="sortBy = 'amount'"
+            >
+              Highest amount
+            </button>
+          </div>
+        </div>
       </header>
 
       <div class="divide-y divide-stone-200 dark:divide-stone-800">
@@ -120,7 +174,7 @@
               {{ formatDate(payment.nextExpectedDate || payment.lastDate) }} ({{
                 formatDistanceToNow(
                   payment.nextExpectedDate || payment.lastDate,
-                  { addSuffix: true }
+                  { addSuffix: true },
                 )
               }})
             </p>
@@ -128,7 +182,11 @@
           <div class="text-right">
             <p
               class="text-base font-semibold tabular-nums"
-              :class="payment.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+              :class="
+                payment.amount > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-500'
+              "
             >
               {{ payment.amount > 0 ? '+' : '-'
               }}{{ formatMoney(Math.abs(normalizeRecurring(payment))) }}
@@ -148,7 +206,9 @@
     <UiCard as="section">
       <header class="flex items-center justify-between mb-4">
         <div>
-          <p class="text-xs text-stone-500 dark:text-stone-400">Category impact</p>
+          <p class="text-xs text-stone-500 dark:text-stone-400">
+            Category impact
+          </p>
           <h3 class="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Breakdown by category
           </h3>
@@ -166,12 +226,16 @@
           <span class="text-xl">{{ CATEGORIES[category.name]?.icon }}</span>
           <div class="flex-1">
             <div class="flex justify-between text-sm">
-              <p class="capitalize text-stone-900 dark:text-stone-100">{{ category.name }}</p>
+              <p class="capitalize text-stone-900 dark:text-stone-100">
+                {{ category.name }}
+              </p>
               <strong class="text-stone-600 dark:text-stone-300 tabular-nums">{{
                 formatMoney(category.total)
               }}</strong>
             </div>
-            <div class="h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden mt-2">
+            <div
+              class="h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden mt-2"
+            >
               <div
                 class="h-full rounded-full bg-violet-500"
                 :style="{ width: `${category.share}%` }"
@@ -200,11 +264,9 @@ import {
 import { CATEGORIES, type Category } from '~/utils/categories';
 import type { RecurringPayment } from '~/types';
 
-const { detectRecurringPayments, refreshRecurringPatterns } = useTransactions();
+const { recurringPayments, refreshRecurringPatterns } = useRecurring();
 
 const { formatCurrency } = useCurrency();
-
-const recurringPayments = computed(() => detectRecurringPayments());
 
 // Refresh patterns on mount if we have transactions
 onMounted(() => {
@@ -214,11 +276,11 @@ onMounted(() => {
 });
 
 const recurringIncome = computed(() =>
-  recurringPayments.value.filter((p) => p.amount > 0)
+  recurringPayments.value.filter((p) => p.amount > 0),
 );
 
 const recurringExpenses = computed(() =>
-  recurringPayments.value.filter((p) => p.amount < 0)
+  recurringPayments.value.filter((p) => p.amount < 0),
 );
 
 const normalizeRecurring = (payment: RecurringPayment) => {
@@ -236,28 +298,29 @@ const totalMonthlyIncome = computed(() =>
   Math.abs(
     recurringIncome.value.reduce(
       (sum, payment) => sum + normalizeRecurring(payment),
-      0
-    )
-  )
+      0,
+    ),
+  ),
 );
 
 const totalMonthlyExpenses = computed(() =>
   recurringExpenses.value.reduce(
     (sum, payment) => sum + normalizeRecurring(payment),
-    0
-  )
+    0,
+  ),
 );
 
 const totalMonthly = computed(
-  () => totalMonthlyIncome.value - totalMonthlyExpenses.value
+  () => totalMonthlyIncome.value - totalMonthlyExpenses.value,
 );
 
 // Show largest expense by normalized monthly amount
 const topRecurring = computed(() =>
   recurringExpenses.value.reduce<RecurringPayment | undefined>(
-    (max, p) => (!max || normalizeRecurring(p) > normalizeRecurring(max) ? p : max),
-    undefined
-  )
+    (max, p) =>
+      !max || normalizeRecurring(p) > normalizeRecurring(max) ? p : max,
+    undefined,
+  ),
 );
 
 const averageRecurring = computed(() => {
@@ -270,20 +333,26 @@ const meanConfidence = computed(() => {
   return (
     recurringPayments.value.reduce(
       (sum, payment) => sum + payment.confidence,
-      0
+      0,
     ) / recurringPayments.value.length
   );
 });
 
+const sortBy = ref<'due' | 'amount'>('amount');
+
 const sortedRecurring = computed(() => {
   if (!recurringPayments.value.length) return [];
 
-  return [...recurringPayments.value]
+  if (sortBy.value === 'amount') {
+    return recurringPayments.value.toSorted((a, b) => b.amount - a.amount);
+  }
+
+  return recurringPayments.value
     .filter((payment) => payment.nextExpectedDate)
-    .sort(
+    .toSorted(
       (a, b) =>
         (a.nextExpectedDate as Date).getTime() -
-        (b.nextExpectedDate as Date).getTime()
+        (b.nextExpectedDate as Date).getTime(),
     );
 });
 
@@ -292,7 +361,10 @@ const getStatus = (payment: RecurringPayment) => {
   const nextDate = payment.nextExpectedDate || payment.lastDate;
 
   if (isPast(nextDate) && !isToday(nextDate)) {
-    return { label: 'Overdue', color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-400/10' };
+    return {
+      label: 'Overdue',
+      color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-400/10',
+    };
   }
 
   let isDueThisPeriod = false;
@@ -305,9 +377,17 @@ const getStatus = (payment: RecurringPayment) => {
   }
 
   if (isDueThisPeriod) {
-    return { label: 'Due soon', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-400/10' };
+    return {
+      label: 'Due soon',
+      color:
+        'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-400/10',
+    };
   } else {
-    return { label: 'Paid', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-400/10' };
+    return {
+      label: 'Paid',
+      color:
+        'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-400/10',
+    };
   }
 };
 

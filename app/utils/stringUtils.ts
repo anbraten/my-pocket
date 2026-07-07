@@ -17,7 +17,7 @@ export function getJaccardSimilarity(a: string, b: string): number {
  * Calculate string similarity using Levenshtein distance
  * @returns A number between 0 and 1, where 1 is identical
  */
-export function getSimilarity(str1: string, str2: string): number {
+export function getLevenshteinSimilarity(str1: string, str2: string): number {
   const longer = str1.length > str2.length ? str1 : str2;
   const shorter = str1.length > str2.length ? str2 : str1;
 

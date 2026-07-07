@@ -38,9 +38,11 @@ export interface AnomalyDetection {
   description: string;
 }
 
-export function useFinancialAnalysis() {
-  const { monthlyExpenses, monthlyIncome, recurringPayments } =
-    useTransactions();
+export function useFinancialAnalysis(
+  monthlyExpenses: Ref<Transaction[]>,
+  monthlyIncome: Ref<Transaction[]>,
+) {
+  const { recurringPayments } = useRecurring();
 
   // Calculate current month progress
   const monthProgress = computed((): MonthProgress => {

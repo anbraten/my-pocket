@@ -39,34 +39,50 @@
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
-          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1"
+          >
             Total Spent
           </p>
-          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+          <p
+            class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ formatMoney(selectedMonthStats.totalSpent) }}
           </p>
         </div>
         <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
-          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1"
+          >
             Transactions
           </p>
-          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+          <p
+            class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ selectedMonthStats.count }}
           </p>
         </div>
         <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
-          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1"
+          >
             Avg Amount
           </p>
-          <p class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+          <p
+            class="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ formatMoney(selectedMonthStats.avgTicket) }}
           </p>
         </div>
         <div class="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/50">
-          <p class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1"
+          >
             Income
           </p>
-          <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <p
+            class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums"
+          >
             +{{ formatMoney(selectedMonthStats.income) }}
           </p>
         </div>
@@ -164,7 +180,11 @@
               <span
                 v-if="getAccount(transaction.accountId)"
                 class="text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
-                :style="{ backgroundColor: getAccount(transaction.accountId)!.color + '22', color: getAccount(transaction.accountId)!.color }"
+                :style="{
+                  backgroundColor:
+                    getAccount(transaction.accountId)!.color + '22',
+                  color: getAccount(transaction.accountId)!.color,
+                }"
               >
                 {{ getAccount(transaction.accountId)!.name }}
               </span>
@@ -177,9 +197,9 @@
                 :model-value="transaction.category"
                 :options="categoryOptions"
                 size="sm"
-                @update:modelValue="(value) =>
-                    updateCategory(transaction.id, value as Category)
-                  "
+                @update:modelValue="
+                  (value) => updateCategory(transaction.id, value as Category)
+                "
               />
               <UiButton
                 variant="ghost"
@@ -192,7 +212,11 @@
             </div>
           </div>
           <p
-            :class="transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+            :class="
+              transaction.amount > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-500'
+            "
             class="font-semibold tabular-nums shrink-0"
           >
             {{ formatSignedMoney(transaction.amount) }}
@@ -256,17 +280,17 @@ import { CATEGORIES, type Category } from '~/utils/categories';
 const showAddTransaction = ref(false);
 
 const {
-  transactions,
-  recurringPayments,
+  transactionVersion,
   updateTransactionCategory,
   deleteTransaction: deleteTxn,
   getOldestTransactionDate,
 } = useTransactions();
 
-const { accounts, accountOptions, getAccount } = useAccounts();
+const { recurringPayments } = useRecurring();
+
+const { accounts, getAccount } = useAccounts();
 
 const { formatCurrency } = useCurrency();
-const { getSimilarity } = await import('~/utils/stringUtils');
 
 const getFirstLine = (text: string) => text.split('\n')[0] || text;
 
@@ -286,7 +310,7 @@ const selectedMonth = ref(new Date());
 const selectedMonthKey = computed(() => format(selectedMonth.value, 'yyyy-MM'));
 
 const selectedMonthLabel = computed(() =>
-  format(selectedMonth.value, 'MMMM yyyy')
+  format(selectedMonth.value, 'MMMM yyyy'),
 );
 
 const isCurrentMonth = computed(() => {
@@ -318,9 +342,7 @@ const refreshOldestMonth = async () => {
   const oldest = await getOldestTransactionDate();
   oldestMonth.value = oldest ? format(oldest, 'yyyy-MM') : null;
 };
-watch(() => transactions.value.length, refreshOldestMonth, {
-  immediate: true,
-});
+watch(transactionVersion, refreshOldestMonth, { immediate: true });
 
 // Check if we can navigate
 const canGoPrevious = computed(() => {
@@ -334,21 +356,12 @@ const canGoNext = computed(() => {
   return selectedMonthKey.value < currentMonth;
 });
 
-// Check if a transaction is recurring
-const isRecurring = (transaction: (typeof transactions.value)[0]) => {
-  const merchant = (transaction.description.split('\n')[0] ?? '')
-    .toLowerCase()
-    .trim();
+const recurringTransactionIds = computed(
+  () => new Set(recurringPayments.value.flatMap((p) => p.transactionIds)),
+);
 
-  return recurringPayments.value.some((payment) => {
-    const paymentMerchant = payment.merchant.toLowerCase().trim();
-    return (
-      merchant.includes(paymentMerchant) ||
-      paymentMerchant.includes(merchant) ||
-      getSimilarity(merchant, paymentMerchant) > 0.8
-    );
-  });
-};
+const isRecurring = (transaction: { id: string }) =>
+  recurringTransactionIds.value.has(transaction.id);
 
 const categories = Object.keys(CATEGORIES);
 
@@ -356,7 +369,7 @@ const categoryOptions = computed(() =>
   categories.map((cat) => ({
     label: capitalize(cat),
     value: cat,
-  }))
+  })),
 );
 
 const typeOptions = [
@@ -367,10 +380,8 @@ const typeOptions = [
 
 // Load only the selected month's transactions from the indexed `date` field
 // - navigating months never has to scan or render the full history.
-const {
-  monthTransactions,
-  refresh: refreshMonthTransactions,
-} = useTransactionsByMonth(selectedMonth);
+const { monthTransactions, refresh: refreshMonthTransactions } =
+  useTransactionsByMonth(selectedMonth);
 
 // Get transactions for selected month
 const selectedMonthTransactions = computed(() => {
@@ -435,7 +446,7 @@ const deleteTransaction = (id: string) => {
   if (confirm('Delete this transaction?')) {
     deleteTxn(id);
     monthTransactions.value = monthTransactions.value.filter(
-      (t) => t.id !== id
+      (t) => t.id !== id,
     );
   }
 };

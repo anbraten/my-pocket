@@ -1,7 +1,7 @@
 /**
  * Export ML model to JSON file for download
  */
-export const downloadMLModel = (modelData: any) => {
+export function downloadMLModel<M>(modelData: M): void {
   const json = JSON.stringify(modelData, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -10,12 +10,12 @@ export const downloadMLModel = (modelData: any) => {
   a.download = `my-pocket-ml-model-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-};
+}
 
 /**
  * Parse and validate imported ML model
  */
-export const parseMLModel = (jsonString: string): any | null => {
+export function parseMLModel<M>(jsonString: string): M | null {
   try {
     const parsed = JSON.parse(jsonString);
 
@@ -33,4 +33,4 @@ export const parseMLModel = (jsonString: string): any | null => {
   } catch {
     return null;
   }
-};
+}

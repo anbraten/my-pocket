@@ -163,33 +163,39 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { CATEGORIES } from '~/utils/categories';
 import type { Transaction, RecurringPayment } from '~/types';
+import { db } from '~/utils/db';
 
 const route = useRoute();
 const merchantName = computed(() =>
-  decodeURIComponent(route.params.merchant as string)
+  decodeURIComponent(route.params.merchant as string),
 );
 
-const { detectRecurringPayments, transactions: allTransactions } =
-  useTransactions();
+const { recurringPayments } = useRecurring();
 const { formatCurrency } = useCurrency();
 
-const recurringPayments = computed(() => detectRecurringPayments());
-
 // Find the recurring payment that matches the merchant
-const recurringPayment = computed((): RecurringPayment | undefined => {
-  return recurringPayments.value.find(
-    (p) => p.merchant.toLowerCase() === merchantName.value.toLowerCase()
-  );
-});
+const recurringPayment = computed((): RecurringPayment | undefined =>
+  recurringPayments.value.find(
+    (p) => p.merchant.toLowerCase() === merchantName.value.toLowerCase(),
+  ),
+);
 
-// Get transactions related to this merchant using the IDs recorded during detection.
-const relatedTransactions = computed((): Transaction[] => {
-  if (!recurringPayment.value) return [];
-  const ids = new Set(recurringPayment.value.transactionIds);
-  return allTransactions.value
-    .filter((t) => ids.has(t.id))
-    .sort((a, b) => b.date.getTime() - a.date.getTime());
-});
+// Fetch only the transactions referenced by this recurring payment from the DB.
+const relatedTransactions = ref<Transaction[]>([]);
+watch(
+  () => recurringPayment.value?.transactionIds,
+  async (ids) => {
+    if (!ids?.length) {
+      relatedTransactions.value = [];
+      return;
+    }
+    const rows = await db.transactions.where('id').anyOf(ids).toArray();
+    relatedTransactions.value = rows.sort(
+      (a, b) => b.date.getTime() - a.date.getTime(),
+    );
+  },
+  { immediate: true },
+);
 
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>

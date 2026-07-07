@@ -17,6 +17,7 @@ interface RecurringCacheMeta {
 
 // Worker-local Dexie instance — shares the same IndexedDB as the main thread.
 class WorkerDB extends Dexie {
+  transactions!: EntityTable<Transaction, 'id'>;
   recurringPayments!: EntityTable<RecurringCacheRow, 'cacheKey'>;
   recurringCacheMeta!: EntityTable<RecurringCacheMeta, 'id'>;
 
@@ -39,14 +40,15 @@ class WorkerDB extends Dexie {
 const db = new WorkerDB();
 
 self.onmessage = async (event: MessageEvent) => {
-  const { type, transactions } = event.data as {
-    type: string;
-    transactions: Transaction[];
-  };
+  const { type } = event.data as { type: string };
 
   if (type !== 'detect') return;
 
   try {
+    // Read directly from IndexedDB — no serialisation cost from the main thread.
+    const allTransactions = await db.transactions.toArray();
+    const transactions = allTransactions.filter((t) => !t.isTransfer);
+
     const txCount = transactions.length;
     const lastTxId = transactions[txCount - 1]?.id ?? null;
 
@@ -68,16 +70,21 @@ self.onmessage = async (event: MessageEvent) => {
       cacheKey: `${p.merchant}|${p.amount}`,
     }));
 
-    await db.transaction('rw', db.recurringPayments, db.recurringCacheMeta, async () => {
-      await db.recurringPayments.clear();
-      if (rows.length > 0) await db.recurringPayments.bulkPut(rows);
-      await db.recurringCacheMeta.put({
-        id: 'default',
-        txCount,
-        lastTxId,
-        cacheVersion: RECURRING_CACHE_VERSION,
-      });
-    });
+    await db.transaction(
+      'rw',
+      db.recurringPayments,
+      db.recurringCacheMeta,
+      async () => {
+        await db.recurringPayments.clear();
+        if (rows.length > 0) await db.recurringPayments.bulkPut(rows);
+        await db.recurringCacheMeta.put({
+          id: 'default',
+          txCount,
+          lastTxId,
+          cacheVersion: RECURRING_CACHE_VERSION,
+        });
+      },
+    );
 
     self.postMessage({ type: 'done', count: results.length });
   } catch (e: any) {

@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-const { isComputingRecurring } = useTransactions();
+const { isComputingRecurring } = useRecurring();
 
 const isDone = ref(false);
 const visible = ref(false);

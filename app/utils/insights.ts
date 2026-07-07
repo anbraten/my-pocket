@@ -1,6 +1,5 @@
 import type { Transaction } from '~/types';
 import { type Category } from '~/utils/categories';
-import { differenceInMonths, startOfMonth } from 'date-fns';
 
 export interface InsightMessage {
   id: string;
@@ -58,22 +57,14 @@ export function detectAnomalies(transactions: Transaction[]): InsightMessage[] {
 }
 
 /**
- * Compare spending trends across months
+ * Compare spending trends between the current and previous month.
+ * Callers are responsible for passing only the relevant months' transactions.
  */
 export function analyzeSpendingTrends(
   currentMonthTransactions: Transaction[],
-  allTransactions: Transaction[]
+  previousMonthTransactions: Transaction[],
 ): InsightMessage[] {
   const insights: InsightMessage[] = [];
-
-  const now = new Date();
-  const currentMonthStart = startOfMonth(now);
-
-  // Get previous month's transactions
-  const previousMonthTransactions = allTransactions.filter((t) => {
-    const monthsDiff = differenceInMonths(currentMonthStart, t.date);
-    return monthsDiff === 1;
-  });
 
   if (previousMonthTransactions.length === 0) return insights;
 

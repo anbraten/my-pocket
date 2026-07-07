@@ -56,13 +56,15 @@
       <p class="text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">
         {{ formatSignedMoney(totalIncome) }} collected
       </p>
-      <p class="text-xs text-stone-500 dark:text-stone-400">Across {{ transactions.length }} records</p>
+      <p class="text-xs text-stone-500 dark:text-stone-400">Across {{ txCount }} records</p>
     </div>
   </UiCard>
 </template>
 
 <script setup lang="ts">
-const { transactions, expenses, income } = useTransactions();
+import { db } from '~/utils/db';
+
+const { transactionVersion } = useTransactions();
 const { currency, currencyOptions, formatCurrency } = useCurrency();
 const { toggleTheme, isDark } = useTheme();
 
@@ -73,12 +75,25 @@ const currencySelects = computed(() =>
   })),
 );
 
-const totalExpenses = computed(() =>
-  Math.abs(expenses.value.reduce((sum, t) => sum + t.amount, 0)),
-);
-const totalIncome = computed(() =>
-  income.value.reduce((sum, t) => sum + t.amount, 0),
-);
+const totalExpenses = ref(0);
+const totalIncome = ref(0);
+const txCount = ref(0);
+
+const loadStats = async () => {
+  let expenses = 0;
+  let income = 0;
+  let count = 0;
+  await db.transactions.each((t) => {
+    count++;
+    if (t.amount < 0) expenses += Math.abs(t.amount);
+    else income += t.amount;
+  });
+  totalExpenses.value = expenses;
+  totalIncome.value = income;
+  txCount.value = count;
+};
+
+watch(transactionVersion, loadStats, { immediate: true });
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>
   formatCurrency(value, { maximumFractionDigits: 2, ...options });
