@@ -22,7 +22,7 @@
       <div class="flex items-center gap-3">
         <TransactionLogo
           v-if="recurringPayment"
-          :name="merchantName"
+          :name="descriptionName"
           :fallback="CATEGORIES[recurringPayment.category]?.icon"
           size="md"
         />
@@ -31,7 +31,7 @@
             Back to recurring
           </p>
           <h1 class="text-2xl font-semibold text-black dark:text-white">
-            {{ getFirstLine(merchantName) }}
+            {{ getFirstLine(descriptionName) }}
           </h1>
         </div>
       </div>
@@ -40,10 +40,14 @@
     <UiCard v-if="recurringPayment" padding="p-8">
       <div class="flex flex-wrap gap-6 items-end">
         <div>
-          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
+          <p
+            class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2"
+          >
             Average Amount
           </p>
-          <h2 class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+          <h2
+            class="text-5xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{ formatMoney(Math.abs(recurringPayment.amount)) }}
           </h2>
           <p class="text-sm text-stone-500 dark:text-stone-400 mt-2 capitalize">
@@ -52,13 +56,17 @@
           </p>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">
+          <p
+            class="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1"
+          >
             Next Expected
           </p>
-          <h3 class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+          <h3
+            class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums"
+          >
             {{
               formatDate(
-                recurringPayment.nextExpectedDate || recurringPayment.lastDate
+                recurringPayment.nextExpectedDate || recurringPayment.lastDate,
               )
             }}
           </h3>
@@ -66,15 +74,19 @@
             {{
               formatDistanceToNow(
                 recurringPayment.nextExpectedDate || recurringPayment.lastDate,
-                { addSuffix: true }
+                { addSuffix: true },
               )
             }}
           </p>
         </div>
       </div>
-      <div class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm">
+      <div
+        class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm"
+      >
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Confidence
           </p>
           <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
@@ -82,16 +94,22 @@
           </p>
         </div>
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Category
           </p>
-          <p class="text-lg font-semibold capitalize text-stone-900 dark:text-stone-100">
+          <p
+            class="text-lg font-semibold capitalize text-stone-900 dark:text-stone-100"
+          >
             {{ CATEGORIES[recurringPayment.category]?.icon }}
             {{ recurringPayment.category }}
           </p>
         </div>
         <div>
-          <p class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1">
+          <p
+            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
+          >
             Last Transaction
           </p>
           <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
@@ -143,7 +161,9 @@
           <p
             class="font-semibold tabular-nums shrink-0"
             :class="
-              transaction.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
+              transaction.amount > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-500'
             "
           >
             {{ transaction.amount > 0 ? '+' : '-'
@@ -168,20 +188,29 @@ import type { Transaction, RecurringPayment } from '~/types';
 import { db } from '~/utils/db';
 
 const route = useRoute();
-const merchantName = computed(() =>
-  decodeURIComponent(route.params.merchant as string),
-);
+const paymentId = computed(() => route.params.id as string);
 
 const getFirstLine = (text: string) => text.split('\n')[0] || text;
 
-const { recurringPayments } = useRecurring();
 const { formatCurrency } = useCurrency();
 
-// Find the recurring payment that matches the merchant
-const recurringPayment = computed((): RecurringPayment | undefined =>
-  recurringPayments.value.find(
-    (p) => p.merchant.toLowerCase() === merchantName.value.toLowerCase(),
-  ),
+const recurringPayment = ref<RecurringPayment | undefined>(undefined);
+watch(
+  paymentId,
+  async (id) => {
+    const row = await db.recurringPayments.get(id);
+    if (!row) {
+      recurringPayment.value = undefined;
+      return;
+    }
+    const { cacheKey: _ck, ...rest } = row;
+    recurringPayment.value = rest as RecurringPayment;
+  },
+  { immediate: true },
+);
+
+const descriptionName = computed(
+  () => recurringPayment.value?.description ?? '',
 );
 
 // Fetch only the transactions referenced by this recurring payment from the DB.
@@ -194,13 +223,12 @@ watch(
       return;
     }
     const rows = await db.transactions.where('id').anyOf(ids).toArray();
-    relatedTransactions.value = rows.sort(
+    relatedTransactions.value = rows.toSorted(
       (a, b) => b.date.getTime() - a.date.getTime(),
     );
   },
   { immediate: true },
 );
-
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>
   formatCurrency(value, {

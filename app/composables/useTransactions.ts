@@ -2,7 +2,7 @@ import { endOfMonth, startOfMonth } from 'date-fns';
 import type { Transaction } from '~/types';
 import { type Category } from '~/utils/categories';
 import { db } from '~/utils/db';
-import { scheduleRecurringDetection } from './useRecurring';
+import { useRecurring } from './useRecurring';
 
 const CHUNK_SIZE = 500;
 
@@ -15,6 +15,7 @@ function bumpVersion() {
 
 export function useTransactions() {
   const categoryDetection = useCategoryDetection();
+  const { runRecurringDetection } = useRecurring();
 
   function generateId() {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -24,7 +25,7 @@ export function useTransactions() {
     const newTransaction: Transaction = { ...transaction, id: generateId() };
     await db.transactions.add(newTransaction);
     bumpVersion();
-    scheduleRecurringDetection();
+    runRecurringDetection();
   }
 
   async function addTransactions(newTransactions: Omit<Transaction, 'id'>[]) {
@@ -88,7 +89,7 @@ export function useTransactions() {
       }
 
       bumpVersion();
-      scheduleRecurringDetection();
+      runRecurringDetection();
     }
 
     return { added: toAdd.length, tagged };
@@ -143,7 +144,6 @@ export function useTransactions() {
 
     await db.transactions.update(id, { category });
     // No bumpVersion — callers apply optimistic local updates in the UI.
-    scheduleRecurringDetection();
   }
 
   async function bulkRecategorize(): Promise<number> {
@@ -176,13 +176,13 @@ export function useTransactions() {
   async function deleteTransaction(id: string) {
     await db.transactions.delete(id);
     bumpVersion();
-    scheduleRecurringDetection();
+    runRecurringDetection();
   }
 
   async function deleteTransactionsByAccount(accountId: string) {
     await db.transactions.where('accountId').equals(accountId).delete();
     bumpVersion();
-    scheduleRecurringDetection();
+    runRecurringDetection();
   }
 
   async function clearAllTransactions() {
@@ -196,6 +196,14 @@ export function useTransactions() {
     return oldest?.date ?? null;
   }
 
+  async function searchTransactions(query: string): Promise<Transaction[]> {
+    if (!import.meta.client || !query.trim()) return [];
+    const lower = query.toLowerCase();
+    return db.transactions
+      .filter((t) => t.description.toLowerCase().includes(lower))
+      .toArray();
+  }
+
   return {
     transactionVersion,
     addTransaction,
@@ -206,6 +214,7 @@ export function useTransactions() {
     deleteTransactionsByAccount,
     clearAllTransactions,
     getOldestTransactionDate,
+    searchTransactions,
   };
 }
 

@@ -1,14 +1,21 @@
 type RecurringTransaction = {
-  merchant: string;
+  description: string;
   amount: number;
   count: number;
-  frequency: 'monthly' | 'yearly' | 'weekly' | 'daily' | 'one-time';
+  frequency:
+    | 'monthly'
+    | 'yearly'
+    | 'weekly'
+    | 'biweekly'
+    | 'daily'
+    | 'quarterly'
+    | 'one-time';
   intervals?: number[]; // days between transactions
   amountStdDev?: number; // standard deviation of amounts
   lastDate?: string; // ISO date string of last transaction
 };
 
-type Model = {
+export type Model = {
   weights: number[];
   bias: number;
 };
@@ -67,7 +74,7 @@ export class RecurringModel {
       intervals.length > 1
         ? Math.sqrt(
             intervals.reduce((s, i) => s + Math.pow(i - avgInterval, 2), 0) /
-              intervals.length
+              intervals.length,
           )
         : 0;
 
@@ -76,7 +83,7 @@ export class RecurringModel {
     const maxIntervalDeviation =
       intervals.length > 0 && avgInterval > 0
         ? Math.max(
-            ...intervals.map((i) => Math.abs(i - avgInterval) / avgInterval)
+            ...intervals.map((i) => Math.abs(i - avgInterval) / avgInterval),
           )
         : 0;
 
@@ -90,7 +97,7 @@ export class RecurringModel {
     const daysSinceLastTransaction = transaction.lastDate
       ? Math.floor(
           (new Date().getTime() - new Date(transaction.lastDate).getTime()) /
-            (1000 * 60 * 60 * 24)
+            (1000 * 60 * 60 * 24),
         )
       : undefined;
 
@@ -131,16 +138,19 @@ export class RecurringModel {
   }
 
   public static train(
-    labeledData: { transaction: RecurringTransaction; isRecurring: boolean }[]
+    labeledData: { transaction: RecurringTransaction; isRecurring: boolean }[],
+    initialModel?: Model,
   ) {
     const X = labeledData.map((d) =>
-      RecurringModel.extractFeatures(d.transaction)
+      RecurringModel.extractFeatures(d.transaction),
     );
     const y = labeledData.map((d) => (d.isRecurring ? 1 : 0));
 
-    const numFeatures = X[0].length;
-    let weights = new Array(numFeatures).fill(0);
-    let bias = 0;
+    const numFeatures = X[0]!.length;
+    let weights = initialModel
+      ? [...initialModel.weights]
+      : new Array(numFeatures).fill(0);
+    let bias = initialModel ? initialModel.bias : 0;
 
     // CRITICAL: Lower learning rate + more iterations
     const learningRate = 0.1;

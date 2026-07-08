@@ -1,7 +1,30 @@
 <template>
   <div class="space-y-6">
+    <!-- Search Bar -->
+    <div class="relative">
+      <svg
+        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+        />
+      </svg>
+      <input
+        v-model="searchQuery"
+        type="search"
+        placeholder="Search all transactions..."
+        class="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-stone-900 dark:text-stone-100 placeholder-stone-400"
+      />
+    </div>
+
     <!-- Month Selector & Stats -->
-    <UiCard>
+    <UiCard v-if="!isSearchMode">
       <div class="flex items-center justify-between mb-6">
         <UiButton
           :disabled="!canGoPrevious"
@@ -134,12 +157,23 @@
     <!-- Transactions List -->
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm text-stone-500 dark:text-stone-400">
-        {{ selectedMonthTransactions.length }}
-        {{
-          selectedMonthTransactions.length === 1
-            ? 'transaction'
-            : 'transactions'
-        }}
+        <template v-if="isSearchMode">
+          {{ selectedMonthTransactions.length }}
+          {{
+            selectedMonthTransactions.length === 1
+              ? 'result'
+              : 'results'
+          }}
+          across all months
+        </template>
+        <template v-else>
+          {{ selectedMonthTransactions.length }}
+          {{
+            selectedMonthTransactions.length === 1
+              ? 'transaction'
+              : 'transactions'
+          }}
+        </template>
       </p>
       <UiButton variant="ghost" size="sm" @click="showFilters = !showFilters">
         {{ showFilters ? 'Hide' : 'Show' }} filters
@@ -231,7 +265,12 @@
     >
       <UiCard>
         <p class="text-stone-500 dark:text-stone-400">
-          No transactions found for {{ selectedMonthLabel }}.
+          <template v-if="isSearchMode">
+            No transactions found matching "{{ searchQuery }}".
+          </template>
+          <template v-else>
+            No transactions found for {{ selectedMonthLabel }}.
+          </template>
         </p>
       </UiCard>
     </div>
@@ -276,6 +315,7 @@
 <script setup lang="ts">
 import { format } from 'date-fns';
 import { CATEGORIES, type Category } from '~/utils/categories';
+import type { Transaction } from '~/types';
 
 const showAddTransaction = ref(false);
 
@@ -284,6 +324,7 @@ const {
   updateTransactionCategory,
   deleteTransaction: deleteTxn,
   getOldestTransactionDate,
+  searchTransactions,
 } = useTransactions();
 
 const { recurringPayments } = useRecurring();
@@ -298,6 +339,19 @@ const showFilters = ref(false);
 const filterCategory = ref('');
 const filterType = ref('');
 const filterAccount = ref('');
+
+// Cross-month search
+const searchQuery = ref('');
+const searchResults = ref<Transaction[]>([]);
+const isSearchMode = computed(() => searchQuery.value.trim().length > 0);
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, (query) => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    searchResults.value = await searchTransactions(query);
+  }, 200);
+});
 
 const accountFilterOptions = computed(() => [
   { label: 'All accounts', value: '' },
@@ -383,9 +437,11 @@ const typeOptions = [
 const { monthTransactions, refresh: refreshMonthTransactions } =
   useTransactionsByMonth(selectedMonth);
 
-// Get transactions for selected month
+// Get transactions for selected month (or search results across all months)
 const selectedMonthTransactions = computed(() => {
-  let filtered = monthTransactions.value;
+  let filtered = isSearchMode.value
+    ? searchResults.value
+    : monthTransactions.value;
 
   if (filterCategory.value) {
     filtered = filtered.filter((t) => t.category === filterCategory.value);

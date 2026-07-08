@@ -37,17 +37,37 @@ export interface Insight {
 }
 
 export interface RecurringPayment {
-  merchant: string;
+  id: string; // set by worker as `${description}|${amount}`
+  description: string;
   amount: number;
   category: Category;
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  frequency:
+    | 'daily'
+    | 'weekly'
+    | 'biweekly'
+    | 'monthly'
+    | 'quarterly'
+    | 'yearly';
   lastDate: Date;
   nextExpectedDate?: Date;
-  count: number;
   transactionIds: string[];
   intervals?: number[]; // days between transactions
   confidence: number; // 0-1, confidence score
   amountStdDev?: number; // standard deviation for amount variance
+}
+
+// Snapshot of a cluster's features stored when the user confirms/dismisses it.
+export interface RecurringFeedback {
+  id: string;
+  paymentId: string;
+  isRecurring: boolean;
+  description: string;
+  amount: number;
+  count: number;
+  frequency: RecurringPayment['frequency'];
+  intervals: number[];
+  amountStdDev: number;
+  lastDate: string; // ISO string
 }
 
 export interface UserSettings {

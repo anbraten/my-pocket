@@ -1,28 +1,33 @@
 import { liveQuery } from 'dexie';
-import type { RecurringPayment } from '~/types';
+import type { RecurringPayment, RecurringFeedback } from '~/types';
 import { db } from '~/utils/db';
 import { migrateLegacyData } from '~/utils/db/migrateLegacyData';
 
 const recurringPayments = ref<RecurringPayment[]>([]);
 const isComputingRecurring = ref(false);
 
-let recurringInitPromise: Promise<void> | null = null;
 let recurringWorker: Worker | null = null;
-let pendingRecurringRerun = false;
-let recurringDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function getRecurringWorker(): Worker {
+async function getRecurringWorker(): Promise<Worker> {
   if (!recurringWorker) {
+    await migrateLegacyData();
+
+    liveQuery(() => db.recurringPayments.toArray()).subscribe({
+      next: (rows) => {
+        recurringPayments.value = rows.map(
+          ({ cacheKey: _ck, ...rest }) => rest as RecurringPayment,
+        );
+      },
+      error: (err) => console.error('[recurring liveQuery]', err),
+    });
+
     recurringWorker = new Worker(
       new URL('../workers/recurring.worker.ts', import.meta.url),
       { type: 'module' },
     );
-    recurringWorker.onmessage = () => {
+    recurringWorker.onmessage = ({ data }) => {
       isComputingRecurring.value = false;
-      if (pendingRecurringRerun) {
-        pendingRecurringRerun = false;
-        runRecurringWorker();
-      }
+      console.log('[recurring worker]', data);
     };
     recurringWorker.onerror = () => {
       isComputingRecurring.value = false;
@@ -31,62 +36,55 @@ function getRecurringWorker(): Worker {
   return recurringWorker;
 }
 
-function runRecurringWorker() {
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn(...args);
+      timer = null;
+    }, delay);
+  };
+}
+
+const runRecurringDetection = debounce(async (force: boolean = false) => {
   isComputingRecurring.value = true;
-  // Worker reads transactions from its own DB instance.
-  getRecurringWorker().postMessage({ type: 'detect' });
-}
-
-// Named export so useTransactions can call it after mutations without
-// creating a circular dependency.
-export function scheduleRecurringDetection() {
-  if (!import.meta.client) return;
-  if (recurringDebounceTimer) clearTimeout(recurringDebounceTimer);
-  recurringDebounceTimer = setTimeout(() => {
-    recurringDebounceTimer = null;
-    if (isComputingRecurring.value) {
-      pendingRecurringRerun = true;
-      return;
-    }
-    runRecurringWorker();
-  }, 300);
-}
-
-// Called by useTransactions.ensureLoaded so migration runs before the
-// liveQuery is set up. Safe to call multiple times — guarded by initPromise.
-export function ensureRecurringLoaded(): Promise<void> {
-  if (!import.meta.client) return Promise.resolve();
-  if (!recurringInitPromise) {
-    recurringInitPromise = (async () => {
-      await migrateLegacyData();
-
-      liveQuery(() => db.recurringPayments.toArray()).subscribe({
-        next: (rows) => {
-          recurringPayments.value = rows.map(
-            ({ cacheKey: _ck, ...rest }) => rest as RecurringPayment,
-          );
-        },
-        error: (err) => console.error('[recurring liveQuery]', err),
-      });
-
-      scheduleRecurringDetection();
-    })();
-  }
-  return recurringInitPromise;
-}
+  const worker = await getRecurringWorker();
+  worker.postMessage({ type: 'detect', force });
+}, 300);
 
 export function useRecurring() {
-  ensureRecurringLoaded();
-
   async function clearRecurringData() {
     await db.recurringPayments.clear();
     await db.recurringCacheMeta.clear();
+    await db.recurringFeedback.clear();
+    await db.recurringModel.clear();
+  }
+
+  async function giveFeedback(payment: RecurringPayment, isRecurring: boolean) {
+    const feedback: RecurringFeedback = toRaw({
+      id: `${payment.id}`,
+      paymentId: payment.id,
+      isRecurring,
+      description: payment.description,
+      amount: payment.amount,
+      count: payment.transactionIds.length,
+      frequency: payment.frequency,
+      intervals: [...(payment.intervals ?? [])],
+      amountStdDev: payment.amountStdDev ?? 0,
+      lastDate: payment.lastDate.toISOString(),
+    });
+
+    isComputingRecurring.value = true;
+    const worker = await getRecurringWorker();
+    worker.postMessage({ type: 'feedback', feedback });
   }
 
   return {
     recurringPayments,
     isComputingRecurring,
-    refreshRecurringPatterns: scheduleRecurringDetection,
+    runRecurringDetection,
     clearRecurringData,
+    giveFeedback,
   };
 }

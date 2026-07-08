@@ -56,10 +56,10 @@ export function useFinancialAnalysis(
 
     const totalIncome = monthlyIncome.value.reduce(
       (sum, t) => sum + t.amount,
-      0
+      0,
     );
     const totalSpending = Math.abs(
-      monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0)
+      monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0),
     );
 
     // Expected spending should be proportional to days elapsed
@@ -96,7 +96,7 @@ export function useFinancialAnalysis(
       0;
     const expenseStdDev = Math.sqrt(
       expenseAmounts.reduce((sum, a) => sum + Math.pow(a - expenseAvg, 2), 0) /
-        expenseAmounts.length || 1
+        expenseAmounts.length || 1,
     );
 
     // Detect large expenses (>2 standard deviations)
@@ -131,7 +131,7 @@ export function useFinancialAnalysis(
     }
 
     return anomalies.sort(
-      (a, b) => Math.abs(b.transaction.amount) - Math.abs(a.transaction.amount)
+      (a, b) => Math.abs(b.transaction.amount) - Math.abs(a.transaction.amount),
     );
   });
 
@@ -145,6 +145,8 @@ export function useFinancialAnalysis(
     function normalizeToMonthly(payment: RecurringPayment): number {
       const baseAmount = (() => {
         if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
+        if (payment.frequency === 'biweekly') return (payment.amount * 26) / 12;
+        if (payment.frequency === 'quarterly') return payment.amount / 3;
         if (payment.frequency === 'yearly') return payment.amount / 12;
         return payment.amount;
       })();
@@ -155,7 +157,7 @@ export function useFinancialAnalysis(
     // Calculate total recurring income
     const totalRecurringIncome = recurringIncome.reduce(
       (sum, p) => sum + normalizeToMonthly(p),
-      0
+      0,
     );
 
     const recurring = payments.map((payment) => ({
@@ -166,7 +168,7 @@ export function useFinancialAnalysis(
           ? (normalizeToMonthly(payment) / totalRecurringIncome) * 100
           : 0,
       isEssential: ['utilities', 'health', 'transport'].includes(
-        payment.category
+        payment.category,
       ),
     }));
 
@@ -174,7 +176,7 @@ export function useFinancialAnalysis(
     const expenseRecurringData = recurring.filter((r) => r.amount < 0);
     const totalMonthly = expenseRecurringData.reduce(
       (sum, s) => sum + s.monthlyAmount,
-      0
+      0,
     );
     const essentialTotal = expenseRecurringData
       .filter((s) => s.isEssential)
@@ -200,7 +202,7 @@ export function useFinancialAnalysis(
       cancellationCandidates,
       potentialSavings: cancellationCandidates.reduce(
         (sum, s) => sum + s.monthlyAmount,
-        0
+        0,
       ),
     };
   });
@@ -209,10 +211,10 @@ export function useFinancialAnalysis(
   const budgetRecommendation = computed((): BudgetRecommendation => {
     const totalIncome = monthlyIncome.value.reduce(
       (sum, t) => sum + t.amount,
-      0
+      0,
     );
     const totalSpending = Math.abs(
-      monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0)
+      monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0),
     );
     const recurring = analyzeRecurring.value.totalMonthly;
 
@@ -233,15 +235,15 @@ export function useFinancialAnalysis(
     let recommendation = '';
     if (hasRoomForDinner && canSaveInETF) {
       recommendation = `You're doing great! You can enjoy a dinner (${dailyBudget.toFixed(
-        0
+        0,
       )}/day available) and still save ~${projectedSavings.toFixed(
-        0
+        0,
       )} for investments.`;
     } else if (hasRoomForDinner && !canSaveInETF) {
       recommendation = `You can afford a dinner, but savings are tight. Consider skipping to build your ETF fund.`;
     } else if (!hasRoomForDinner && projectedSavings > 0) {
       recommendation = `Budget is tight for discretionary spending. Save the ${projectedSavings.toFixed(
-        0
+        0,
       )} and skip the dinner this time.`;
     } else {
       recommendation = `You're overspending. Cut back on non-essentials to avoid going into the red.`;
@@ -274,7 +276,7 @@ export function useFinancialAnalysis(
         description: `${
           progress.daysElapsed
         } days in, you've spent ${progress.actualSpending.toFixed(
-          0
+          0,
         )} vs expected ${progress.expectedSpending.toFixed(0)}. Keep it up!`,
       });
     } else {
@@ -285,11 +287,11 @@ export function useFinancialAnalysis(
         severity: 'warning',
         title: '⚠️ Spending ahead of schedule',
         description: `You're ${overspending.toFixed(
-          0
+          0,
         )} over where you should be at day ${
           progress.daysElapsed
         }. Projected to spend ${progress.projectedEndOfMonth.toFixed(
-          0
+          0,
         )} by month end.`,
         action: 'Consider reducing discretionary spending',
         amount: overspending,
@@ -304,7 +306,7 @@ export function useFinancialAnalysis(
         severity: 'success',
         title: '🍽️ Yes, go enjoy that dinner!',
         description: `You have ${budget.dinnerBudget.toFixed(
-          0
+          0,
         )}/day available. A nice dinner with your girlfriend fits comfortably in your budget.`,
       });
     } else {
@@ -314,7 +316,7 @@ export function useFinancialAnalysis(
         severity: 'warning',
         title: '🍽️ Budget is tight for dining out',
         description: `Only ${budget.dinnerBudget.toFixed(
-          0
+          0,
         )}/day remaining. Consider a home-cooked meal instead to stay on track.`,
         action: 'Cook at home this time',
       });
@@ -328,7 +330,7 @@ export function useFinancialAnalysis(
         severity: 'success',
         title: '💰 Extra money for ETF investments',
         description: `You're projected to have ${budget.savingsOpportunity.toFixed(
-          0
+          0,
         )} left over. Perfect for your investment portfolio!`,
         action: 'Set up automatic ETF purchase',
         amount: budget.savingsOpportunity,
@@ -348,12 +350,12 @@ export function useFinancialAnalysis(
           severity: 'info',
           title: '📱 Review leisure expenses',
           description: `${
-            topCandidate.merchant
+            topCandidate.description
           } costs ${topCandidate.monthlyAmount.toFixed(0)}/mo. You have ${
             subs.recurring.length
           } recurring items totaling ${subs.totalMonthly.toFixed(0)}/mo.`,
           action: `Cancel unused services to save ${subs.potentialSavings.toFixed(
-            0
+            0,
           )}/mo`,
           amount: subs.potentialSavings,
           category: 'leisure',
@@ -398,7 +400,7 @@ export function useFinancialAnalysis(
   const workProgress = computed(() => {
     const totalIncome = monthlyIncome.value.reduce(
       (sum, t) => sum + t.amount,
-      0
+      0,
     );
     const progress = monthProgress.value;
 

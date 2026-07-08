@@ -1,9 +1,12 @@
+import { CATEGORIES } from '~/utils/categories';
+import type { Category } from '~/utils/categories';
+
 /**
  * Normalize description for consistent matching while preserving key information
  * Keeps important words and structure, removes dates/amounts/noise
  */
 export function normalizeDescription(description: string): string {
-  return (description.split('\n')[0] ?? description)
+  return (description.split('\n').slice(0, 2).join(' ') ?? description)
     .toLowerCase()
     .replace(/\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/g, '') // Remove dates
     .replace(/\b\d+[.,]\d{2}\b/g, '') // Remove amounts like 123.45

@@ -48,49 +48,6 @@
           </p>
         </div>
       </div>
-      <div
-        class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 grid gap-4 md:grid-cols-3 text-sm"
-      >
-        <div>
-          <p
-            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
-          >
-            Largest expense
-          </p>
-          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
-            {{ topRecurring ? getFirstLine(topRecurring.merchant) : '—' }}
-          </p>
-          <p
-            v-if="topRecurring"
-            class="text-stone-500 dark:text-stone-400 tabular-nums"
-          >
-            {{ formatMoney(Math.abs(normalizeRecurring(topRecurring))) }} /
-            {{ topRecurring.frequency }}
-          </p>
-        </div>
-        <div>
-          <p
-            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
-          >
-            Average ticket
-          </p>
-          <p
-            class="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums"
-          >
-            {{ formatMoney(averageRecurring) }}
-          </p>
-        </div>
-        <div>
-          <p
-            class="text-stone-500 dark:text-stone-400 uppercase text-xs tracking-wider mb-1"
-          >
-            Confidence
-          </p>
-          <p class="text-lg font-semibold text-stone-900 dark:text-stone-100">
-            {{ Math.round(meanConfidence * 100) }}%
-          </p>
-        </div>
-      </div>
     </UiCard>
 
     <UiCard as="section">
@@ -139,20 +96,23 @@
       <div class="divide-y divide-stone-200 dark:divide-stone-800">
         <article
           v-for="payment in sortedRecurring"
-          :key="payment.merchant"
+          :key="payment.description"
           class="p-4 flex items-start gap-4 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
           @click="showTransactions(payment)"
         >
           <TransactionLogo
-            :name="getFirstLine(payment.merchant)"
+            :name="getFirstLine(payment.description)"
             :fallback="CATEGORIES[payment.category]?.icon"
             size="md"
             class="mt-1"
           />
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <p class="font-medium truncate text-stone-900 dark:text-stone-100" :title="payment.merchant">
-                {{ getFirstLine(payment.merchant) }}
+              <p
+                class="font-medium truncate text-stone-900 dark:text-stone-100"
+                :title="payment.description"
+              >
+                {{ getFirstLine(payment.description) }}
               </p>
               <span
                 :class="[
@@ -163,27 +123,75 @@
                 {{ getStatus(payment).label }}
               </span>
             </div>
-            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1 capitalize">
+            <p
+              class="text-xs text-stone-500 dark:text-stone-400 mt-1 capitalize"
+            >
               {{ payment.frequency }} •
               <span :class="{ 'text-rose-500': payment.confidence < 0.5 }">
                 {{ formatConfidence(payment.confidence) }}
               </span>
-              • next {{ formatDistanceToNow(payment.nextExpectedDate || payment.lastDate, { addSuffix: true }) }}
+              • next
+              {{
+                formatDistanceToNow(
+                  payment.nextExpectedDate || payment.lastDate,
+                  { addSuffix: true },
+                )
+              }}
             </p>
           </div>
-          <div class="text-right shrink-0">
-            <p
-              class="font-semibold tabular-nums"
-              :class="
-                payment.amount > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-500'
-              "
-            >
-              {{ payment.amount > 0 ? '+' : '-'
-              }}{{ formatMoney(Math.abs(normalizeRecurring(payment))) }}
-            </p>
-            <p class="text-xs text-stone-500 dark:text-stone-400">/ month</p>
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="flex gap-1" @click.stop>
+              <button
+                title="Confirm — this is a real recurring payment"
+                class="p-1.5 rounded-md text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-400/10 transition-colors"
+                @click="giveFeedback(payment, true)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+              <button
+                title="Dismiss — not actually recurring"
+                class="p-1.5 rounded-md text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-400/10 transition-colors"
+                @click="giveFeedback(payment, false)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="text-right">
+              <p
+                class="font-semibold tabular-nums"
+                :class="
+                  payment.amount > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-500'
+                "
+              >
+                {{ payment.amount > 0 ? '+' : '-'
+                }}{{ formatMoney(Math.abs(normalizeRecurring(payment))) }}
+              </p>
+              <p class="text-xs text-stone-500 dark:text-stone-400">/ month</p>
+            </div>
           </div>
         </article>
         <div
@@ -191,52 +199,6 @@
           class="py-8 text-center text-stone-500 dark:text-stone-400"
         >
           No recurring transactions detected yet.
-        </div>
-      </div>
-    </UiCard>
-
-    <UiCard as="section">
-      <header class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-xs text-stone-500 dark:text-stone-400">
-            Category impact
-          </p>
-          <h3 class="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            Breakdown by category
-          </h3>
-        </div>
-        <span class="text-xs text-stone-500 dark:text-stone-400"
-          >{{ categoryBreakdown.length }} categories</span
-        >
-      </header>
-      <div class="space-y-4">
-        <div
-          v-for="category in categoryBreakdown"
-          :key="category.name"
-          class="flex items-center gap-3"
-        >
-          <span class="text-xl">{{ CATEGORIES[category.name]?.icon }}</span>
-          <div class="flex-1">
-            <div class="flex justify-between text-sm">
-              <p class="capitalize text-stone-900 dark:text-stone-100">
-                {{ category.name }}
-              </p>
-              <strong class="text-stone-600 dark:text-stone-300 tabular-nums">{{
-                formatMoney(category.total)
-              }}</strong>
-            </div>
-            <div
-              class="h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden mt-2"
-            >
-              <div
-                class="h-full rounded-full bg-violet-500"
-                :style="{ width: `${category.share}%` }"
-              />
-            </div>
-          </div>
-          <span class="text-xs text-stone-500 dark:text-stone-400"
-            >{{ Math.round(category.share) }}%</span
-          >
         </div>
       </div>
     </UiCard>
@@ -253,20 +215,29 @@ import {
   isPast,
   isToday,
 } from 'date-fns';
-import { CATEGORIES, type Category } from '~/utils/categories';
+import { CATEGORIES } from '~/utils/categories';
 import type { RecurringPayment } from '~/types';
 
-const { recurringPayments, refreshRecurringPatterns } = useRecurring();
+const {
+  recurringPayments,
+  runRecurringDetection,
+  giveFeedback,
+  clearRecurringData,
+} = useRecurring();
 
 const getFirstLine = (text: string) => text.split('\n')[0] || text;
 
 const { formatCurrency } = useCurrency();
+const route = useRoute();
 
 // Refresh patterns on mount if we have transactions
-onMounted(() => {
-  if (recurringPayments.value.length === 0) {
-    refreshRecurringPatterns();
+onMounted(async () => {
+  const force = !!route.query.refresh;
+  if (force) {
+    await clearRecurringData();
   }
+
+  runRecurringDetection();
 });
 
 const recurringIncome = computed(() =>
@@ -280,11 +251,12 @@ const recurringExpenses = computed(() =>
 const normalizeRecurring = (payment: RecurringPayment) => {
   const monthlyAmount = (() => {
     if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
+    if (payment.frequency === 'biweekly') return (payment.amount * 26) / 12;
+    if (payment.frequency === 'quarterly') return payment.amount / 3;
     if (payment.frequency === 'yearly') return payment.amount / 12;
     return payment.amount;
   })();
 
-  // Return the absolute value for calculations
   return Math.abs(monthlyAmount);
 };
 
@@ -307,30 +279,6 @@ const totalMonthlyExpenses = computed(() =>
 const totalMonthly = computed(
   () => totalMonthlyIncome.value - totalMonthlyExpenses.value,
 );
-
-// Show largest expense by normalized monthly amount
-const topRecurring = computed(() =>
-  recurringExpenses.value.reduce<RecurringPayment | undefined>(
-    (max, p) =>
-      !max || normalizeRecurring(p) > normalizeRecurring(max) ? p : max,
-    undefined,
-  ),
-);
-
-const averageRecurring = computed(() => {
-  if (!recurringPayments.value.length) return 0;
-  return totalMonthly.value / recurringPayments.value.length;
-});
-
-const meanConfidence = computed(() => {
-  if (!recurringPayments.value.length) return 0;
-  return (
-    recurringPayments.value.reduce(
-      (sum, payment) => sum + payment.confidence,
-      0,
-    ) / recurringPayments.value.length
-  );
-});
 
 const sortBy = ref<'due' | 'amount'>('amount');
 
@@ -364,9 +312,14 @@ const getStatus = (payment: RecurringPayment) => {
   let isDueThisPeriod = false;
   if (payment.frequency === 'monthly') {
     isDueThisPeriod = isSameMonth(nextDate, now);
+  } else if (payment.frequency === 'quarterly') {
+    isDueThisPeriod = isSameMonth(nextDate, now);
   } else if (payment.frequency === 'yearly') {
     isDueThisPeriod = isSameYear(nextDate, now);
-  } else if (payment.frequency === 'weekly') {
+  } else if (
+    payment.frequency === 'weekly' ||
+    payment.frequency === 'biweekly'
+  ) {
     isDueThisPeriod = isSameISOWeek(nextDate, now);
   }
 
@@ -384,25 +337,6 @@ const getStatus = (payment: RecurringPayment) => {
     };
   }
 };
-
-const categoryBreakdown = computed(() => {
-  const totals: Record<Category, number> = {} as Record<Category, number>;
-  recurringPayments.value
-    .filter((p) => p.amount < 0)
-    .forEach((payment) => {
-      const amount = Math.abs(normalizeRecurring(payment));
-      totals[payment.category] = (totals[payment.category] || 0) + amount;
-    });
-
-  const total = Object.values(totals).reduce((sum, amount) => sum + amount, 0);
-  return Object.entries(totals)
-    .map(([name, amount]) => ({
-      name: name as Category,
-      total: amount,
-      share: total ? (amount / total) * 100 : 0,
-    }))
-    .toSorted((a, b) => b.total - a.total);
-});
 
 const formatMoney = (value: number, options?: Intl.NumberFormatOptions) =>
   formatCurrency(value, {
@@ -422,16 +356,14 @@ const nextCharge = computed(() => {
   const date = next.nextExpectedDate || next.lastDate;
   return {
     label: amount,
-    detail: `${getFirstLine(next.merchant)} on ${format(date, 'MMM d')}`,
+    detail: `${getFirstLine(next.description)} on ${format(date, 'MMM d')}`,
   };
 });
 
 const formatConfidence = (confidence: number) =>
   `${Math.round(confidence * 100)}% confidence`;
 
-const formatDate = (date: Date) => format(date, 'MMM d, yyyy');
-
 const showTransactions = (payment: RecurringPayment) => {
-  navigateTo(`/recurring/${encodeURIComponent(payment.merchant)}`);
+  navigateTo(`/recurring/${encodeURIComponent(payment.id)}`);
 };
 </script>

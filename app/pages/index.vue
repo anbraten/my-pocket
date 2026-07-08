@@ -46,7 +46,12 @@
           <div
             class="bg-violet-500"
             :style="{ width: `${fixedCostsPercent}%` }"
-            :title="`Fixed: ${formatMoney(recurringBurn)}`"
+            :title="`Fixed: ${formatMoney(fixedCostsBurn)}`"
+          />
+          <div
+            class="bg-emerald-400"
+            :style="{ width: `${savingsPercent}%` }"
+            :title="`Savings: ${formatMoney(actualSavings)}`"
           />
           <div
             class="bg-violet-300"
@@ -60,6 +65,10 @@
           <div class="flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-violet-500" />
             <span>Fixed {{ Math.round(fixedCostsPercent) }}%</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Savings {{ Math.round(savingsPercent) }}%</span>
           </div>
           <div class="flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-violet-300" />
@@ -98,7 +107,7 @@
           <p
             class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
           >
-            {{ formatMoney(recurringBurn) }}
+            {{ formatMoney(fixedCostsBurn) }}
           </p>
           <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
             Monthly recurring
@@ -123,15 +132,15 @@
           <p
             class="text-[10px] uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1"
           >
-            Savings Goal
+            Savings
           </p>
           <p
             class="text-xl font-bold text-stone-900 dark:text-stone-100 tabular-nums"
           >
-            {{ formatMoney(targetSavings) }}
+            {{ formatMoney(actualSavings) }}
           </p>
           <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-            20% of income
+            Monthly recurring
           </p>
         </div>
       </div>
@@ -241,24 +250,24 @@
           <h3
             class="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1 tabular-nums"
           >
-            {{ formatMoney(recurringBurn) }}
+            {{ formatMoney(fixedCostsBurn) }}
           </h3>
         </div>
 
         <div class="space-y-1">
           <article
-            v-for="payment in recurringExpenses.slice(0, 6)"
-            :key="payment.merchant"
+            v-for="payment in recurringExpenses.filter(p => p.category !== 'savings').slice(0, 6)"
+            :key="payment.description"
             class="flex items-center justify-between py-2.5"
           >
             <div class="flex items-center gap-2 min-w-0">
               <TransactionLogo
-                :name="payment.merchant"
+                :name="payment.description"
                 :fallback="CATEGORIES[payment.category]?.icon"
                 size="sm"
               />
               <span class="text-sm truncate text-stone-900 dark:text-stone-100">
-                {{ payment.merchant }}
+                {{ payment.description }}
               </span>
             </div>
             <span
@@ -430,6 +439,8 @@ const recurringExpenses = computed(() =>
 const normalizeRecurring = (payment: RecurringPayment) => {
   const monthlyAmount = (() => {
     if (payment.frequency === 'weekly') return (payment.amount * 52) / 12;
+    if (payment.frequency === 'biweekly') return (payment.amount * 26) / 12;
+    if (payment.frequency === 'quarterly') return payment.amount / 3;
     if (payment.frequency === 'yearly') return payment.amount / 12;
     return payment.amount;
   })();
@@ -457,11 +468,21 @@ const targetSavings = computed(() => {
   return baseIncome.value * 0;
 });
 
+// Savings = sum of monthly-normalised recurring payments in the savings category
+const actualSavings = computed(() =>
+  recurringPayments.value
+    .filter((p) => p.category === 'savings')
+    .reduce((sum, p) => sum + normalizeRecurring(p), 0),
+);
+
+// Fixed costs excluding savings payments
+const fixedCostsBurn = computed(() => recurringBurn.value - actualSavings.value);
+
 // Calculate discretionary spending (non-recurring expenses this month)
 const discretionarySpent = computed(() => {
   // Get all recurring merchant names (normalized for fuzzy matching)
   const recurringMerchants = new Set(
-    recurringExpenses.value.map((p) => p.merchant.toLowerCase().trim()),
+    recurringExpenses.value.map((p) => p.description.toLowerCase().trim()),
   );
 
   // Filter out transactions that match recurring merchants
@@ -501,13 +522,21 @@ const totalBudget = computed(() => {
 
 const fixedCostsPercent = computed(() => {
   if (totalBudget.value <= 1) return 0;
-  return Math.min(100, (recurringBurn.value / totalBudget.value) * 100);
+  return Math.min(100, (fixedCostsBurn.value / totalBudget.value) * 100);
+});
+
+const savingsPercent = computed(() => {
+  if (totalBudget.value <= 1) return 0;
+  return Math.min(
+    100 - fixedCostsPercent.value,
+    (actualSavings.value / totalBudget.value) * 100,
+  );
 });
 
 const discretionaryPercent = computed(() => {
   if (totalBudget.value <= 1) return 0;
   return Math.min(
-    100 - fixedCostsPercent.value,
+    100 - fixedCostsPercent.value - savingsPercent.value,
     (discretionarySpent.value / totalBudget.value) * 100,
   );
 });

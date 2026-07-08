@@ -1,5 +1,6 @@
 import { db } from '~/utils/db';
 import type { Transaction, RecurringPayment } from '~/types';
+import { fnv1a, extractDescriptionCore } from '~/utils/detectRecurring';
 
 const MIGRATION_FLAG = 'my-pocket:migrated-v1';
 
@@ -10,10 +11,6 @@ function readJSON<T>(key: string): T | null {
   } catch {
     return null;
   }
-}
-
-function recurringCacheKey(payment: RecurringPayment) {
-  return `${payment.merchant}|${payment.amount}`;
 }
 
 // One-time copy of legacy localStorage data into Dexie. Safe to call on
@@ -31,17 +28,21 @@ export async function migrateLegacyData() {
   }
 
   const legacyRecurring = readJSON<RecurringPayment[]>(
-    'my-pocket:recurring-payments'
+    'my-pocket:recurring-payments',
   );
   if (legacyRecurring?.length) {
-    const recurring = legacyRecurring.map((r) => ({
-      ...r,
-      lastDate: new Date(r.lastDate),
-      nextExpectedDate: r.nextExpectedDate
-        ? new Date(r.nextExpectedDate)
-        : undefined,
-      cacheKey: recurringCacheKey(r),
-    }));
+    const recurring = legacyRecurring.map((r) => {
+      const id = fnv1a(extractDescriptionCore(r.description));
+      return {
+        ...r,
+        id,
+        lastDate: new Date(r.lastDate),
+        nextExpectedDate: r.nextExpectedDate
+          ? new Date(r.nextExpectedDate)
+          : undefined,
+        cacheKey: id,
+      };
+    });
     await db.recurringPayments.bulkPut(recurring);
   }
 

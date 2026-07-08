@@ -129,6 +129,7 @@ import { parseCSV, csvToTransactions, BANK_PARSERS } from '~/utils/csvParser';
 import { db } from '~/utils/db';
 
 const { addTransactions } = useTransactions();
+const { predict } = useCategoryDetection();
 const { accountOptions } = useAccounts();
 
 const selectedParserName = ref('generic');
@@ -161,11 +162,7 @@ const handleFileUpload = async (event: Event) => {
   try {
     for (const file of files) {
       const rows = await parseCSV(file, selectedParserName.value);
-      const parsed = csvToTransactions(
-        rows,
-        selectedParserName.value,
-        () => 'other',
-      );
+      const parsed = csvToTransactions(rows, selectedParserName.value, predict);
       const newTransactions = parsed.map((t) =>
         selectedImportAccountId.value
           ? { ...t, accountId: selectedImportAccountId.value }

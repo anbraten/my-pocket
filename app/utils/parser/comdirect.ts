@@ -3,6 +3,7 @@ import { isValid, parse } from 'date-fns';
 export const comdirectParser = {
   name: 'comdirect Bank',
   delimiter: ';',
+  fileEncoding: 'ISO-8859-1',
   skipFirstNLines: 4,
   hasHeader: true,
   columns: {
@@ -20,7 +21,7 @@ export const comdirectParser = {
 
     // Extract sender/receiver name and format the rest of the details
     const text = row['Buchungstext'] || '';
-    if (!text) return 'Unknown';
+    if (!text) return row['Vorgang'] || 'Unknown';
 
     let name: string | undefined = '';
     const details: string[] = [];

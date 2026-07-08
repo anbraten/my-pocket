@@ -22,7 +22,7 @@ export function detectAnomalies(transactions: Transaction[]): InsightMessage[] {
   const amounts = transactions.map((t) => Math.abs(t.amount));
   const avg = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
   const stdDev = Math.sqrt(
-    amounts.reduce((sum, a) => sum + Math.pow(a - avg, 2), 0) / amounts.length
+    amounts.reduce((sum, a) => sum + Math.pow(a - avg, 2), 0) / amounts.length,
   );
 
   // Find transactions that are >2.5 standard deviations from mean
@@ -44,9 +44,9 @@ export function detectAnomalies(transactions: Transaction[]): InsightMessage[] {
       severity: 'warning',
       title: `🔔 Unusual ${transaction.category} expense`,
       description: `${transaction.description.split('\n')[0]} (${Math.abs(
-        transaction.amount
+        transaction.amount,
       ).toFixed(
-        0
+        0,
       )}) is ${deviation}% higher than your average. Make sure this was intended!`,
       category: transaction.category,
       amount: Math.abs(transaction.amount),
@@ -109,7 +109,7 @@ export function analyzeSpendingTrends(
         severity: 'info',
         title: `📊 New spending in ${category}`,
         description: `You started spending on ${category} this month (${current.toFixed(
-          0
+          0,
         )}). Is this expected?`,
         category,
         amount: current,
@@ -128,9 +128,9 @@ export function analyzeSpendingTrends(
         severity: 'success',
         title: `🎉 Great job on ${category}!`,
         description: `You spent ${Math.abs(percentChange).toFixed(
-          0
+          0,
         )}% less on ${category} this month (${current.toFixed(
-          0
+          0,
         )} vs ${previous.toFixed(0)}). Keep it up!`,
         category,
         amount: previous - current,
@@ -142,9 +142,9 @@ export function analyzeSpendingTrends(
         severity: 'warning',
         title: `📈 ${category} spending increased`,
         description: `Your ${category} spending jumped ${percentChange.toFixed(
-          0
+          0,
         )}% (${current.toFixed(0)} vs ${previous.toFixed(
-          0
+          0,
         )} last month). Was this planned?`,
         category,
         amount: current - previous,
@@ -162,7 +162,7 @@ export function analyzeBudgetPacing(
   daysElapsed: number,
   daysTotal: number,
   alreadySpent: number,
-  totalBudget: number
+  totalBudget: number,
 ): InsightMessage | null {
   const percentElapsed = daysElapsed / daysTotal;
   const expectedSpent = totalBudget * percentElapsed;
@@ -176,7 +176,7 @@ export function analyzeBudgetPacing(
       severity: 'danger',
       title: '⚠️ Spending too fast',
       description: `You're ${variancePercent.toFixed(
-        0
+        0,
       )}% ahead of pace. At this rate, you'll overspend by ${(
         alreadySpent / percentElapsed -
         totalBudget
@@ -190,7 +190,7 @@ export function analyzeBudgetPacing(
       severity: 'success',
       title: '✅ Excellent pacing!',
       description: `You're ${Math.abs(variancePercent).toFixed(
-        0
+        0,
       )}% under pace. Keep this up and you'll have ${(
         totalBudget -
         alreadySpent / percentElapsed
@@ -207,21 +207,21 @@ export function analyzeBudgetPacing(
  */
 export function generateRecurringInsights(
   recurring: Array<{
-    merchant: string;
+    description: string;
     amount: number;
     category: Category;
     frequency: string;
-  }>
+  }>,
 ): InsightMessage[] {
   const insights: InsightMessage[] = [];
 
   // Show top 2 recurring payments as insights
   for (const payment of recurring.slice(0, 2)) {
     insights.push({
-      id: `recurring-${payment.merchant}`,
+      id: `recurring-${payment.description}`,
       type: 'trend',
       severity: 'info',
-      title: `🔄 ${payment.merchant}`,
+      title: `🔄 ${payment.description}`,
       description: `${Math.abs(payment.amount).toFixed(0)} ${
         payment.frequency
       } recurring ${payment.amount < 0 ? 'expense' : 'income'} detected`,
@@ -241,7 +241,7 @@ export function generateCategoryInsights(
     category: Category;
     total: number;
     percentage: number;
-  }>
+  }>,
 ): InsightMessage[] {
   const insights: InsightMessage[] = [];
 
