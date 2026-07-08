@@ -8,19 +8,23 @@ const isComputingRecurring = ref(false);
 
 let recurringWorker: Worker | null = null;
 
+async function loadRecurringPayments() {
+  await migrateLegacyData();
+
+  liveQuery(() => db.recurringPayments.toArray()).subscribe({
+    next: (rows) => {
+      recurringPayments.value = rows.map(
+        ({ cacheKey: _ck, ...rest }) => rest as RecurringPayment,
+      );
+    },
+    error: (err) => console.error('[recurring liveQuery]', err),
+  });
+}
+
+loadRecurringPayments();
+
 async function getRecurringWorker(): Promise<Worker> {
   if (!recurringWorker) {
-    await migrateLegacyData();
-
-    liveQuery(() => db.recurringPayments.toArray()).subscribe({
-      next: (rows) => {
-        recurringPayments.value = rows.map(
-          ({ cacheKey: _ck, ...rest }) => rest as RecurringPayment,
-        );
-      },
-      error: (err) => console.error('[recurring liveQuery]', err),
-    });
-
     recurringWorker = new Worker(
       new URL('../workers/recurring.worker.ts', import.meta.url),
       { type: 'module' },

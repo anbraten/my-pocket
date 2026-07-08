@@ -49,14 +49,14 @@
             :title="`Fixed: ${formatMoney(fixedCostsBurn)}`"
           />
           <div
-            class="bg-emerald-400"
-            :style="{ width: `${savingsPercent}%` }"
-            :title="`Savings: ${formatMoney(actualSavings)}`"
-          />
-          <div
             class="bg-violet-300"
             :style="{ width: `${discretionaryPercent}%` }"
             :title="`Variable: ${formatMoney(discretionarySpent)}`"
+          />
+          <div
+            class="bg-emerald-400"
+            :style="{ width: `${savingsPercent}%` }"
+            :title="`Savings: ${formatMoney(actualSavings)}`"
           />
         </div>
         <div
@@ -64,15 +64,15 @@
         >
           <div class="flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-violet-500" />
-            <span>Fixed {{ Math.round(fixedCostsPercent) }}%</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <div class="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Savings {{ Math.round(savingsPercent) }}%</span>
+            <span>Expected Fixed {{ Math.round(fixedCostsPercent) }}%</span>
           </div>
           <div class="flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-violet-300" />
             <span>Variable {{ Math.round(discretionaryPercent) }}%</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Expected Savings {{ Math.round(savingsPercent) }}%</span>
           </div>
           <div class="flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-700" />
@@ -178,7 +178,7 @@
             <p
               class="text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider"
             >
-              Monthly Spending
+              Variable Spending this month
             </p>
             <h3
               class="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1"
@@ -234,7 +234,7 @@
             v-if="allSpendingByCategory.length === 0"
             class="text-center py-8 text-stone-500 dark:text-stone-400"
           >
-            No spending yet this month
+            No variable spending yet this month
           </div>
         </div>
       </UiCard>
@@ -256,7 +256,9 @@
 
         <div class="space-y-1">
           <article
-            v-for="payment in recurringExpenses.filter(p => p.category !== 'savings').slice(0, 6)"
+            v-for="payment in recurringExpenses
+              .filter((p) => p.category !== 'savings')
+              .slice(0, 6)"
             :key="payment.description"
             class="flex items-center justify-between py-2.5"
           >
@@ -420,9 +422,21 @@ const { monthProgress, analyzeRecurring } = useFinancialAnalysis(
 
 const { formatCurrency } = useCurrency();
 
-const monthlyExpenseTotal = computed(() =>
-  Math.abs(monthlyExpenses.value.reduce((sum, t) => sum + t.amount, 0)),
-);
+const monthlyExpenseTotal = computed(() => {
+  const categoryNet: Record<string, number> = {};
+  nonRecurringExpenses.value.forEach((t) => {
+    categoryNet[t.category] =
+      (categoryNet[t.category] ?? 0) + Math.abs(t.amount);
+  });
+  monthlyIncome.value.forEach((t) => {
+    if (t.category in categoryNet) {
+      categoryNet[t.category] = (categoryNet[t.category] ?? 0) - t.amount;
+    }
+  });
+  return Object.values(categoryNet)
+    .filter((v) => v > 0)
+    .reduce((sum, v) => sum + v, 0);
+});
 
 const monthlyIncomeTotal = computed(() =>
   monthlyIncome.value.reduce((sum, t) => sum + t.amount, 0),
@@ -475,27 +489,31 @@ const actualSavings = computed(() =>
     .reduce((sum, p) => sum + normalizeRecurring(p), 0),
 );
 
-// Fixed costs excluding savings payments
-const fixedCostsBurn = computed(() => recurringBurn.value - actualSavings.value);
+// Fixed costs = all recurring except savings and income, net of positive and negative amounts
+const fixedCostsBurn = computed(() => {
+  const net = recurringPayments.value
+    .filter((p) => p.category !== 'savings' && p.category !== 'income')
+    .reduce((sum, p) => sum + normalizeRecurring(p) * Math.sign(p.amount), 0);
+  return -net;
+});
 
-// Calculate discretionary spending (non-recurring expenses this month)
-const discretionarySpent = computed(() => {
-  // Get all recurring merchant names (normalized for fuzzy matching)
+// Non-recurring expenses: filter out transactions that match recurring merchant names
+const nonRecurringExpenses = computed(() => {
   const recurringMerchants = new Set(
     recurringExpenses.value.map((p) => p.description.toLowerCase().trim()),
   );
-
-  // Filter out transactions that match recurring merchants
-  const nonRecurringExpenses = monthlyExpenses.value.filter((t) => {
+  return monthlyExpenses.value.filter((t) => {
     const merchant = (t.description.split('\n')[0] ?? '').toLowerCase().trim();
-    // Check if this merchant is in our recurring list (fuzzy match would be more accurate but this is simpler)
     return !Array.from(recurringMerchants).some(
       (rm) => merchant.includes(rm) || rm.includes(merchant),
     );
   });
-
-  return Math.abs(nonRecurringExpenses.reduce((sum, t) => sum + t.amount, 0));
 });
+
+// Calculate discretionary spending (non-recurring expenses this month)
+const discretionarySpent = computed(() =>
+  Math.abs(nonRecurringExpenses.value.reduce((sum, t) => sum + t.amount, 0)),
+);
 
 // Calculate what's left this month
 const remainingThisMonth = computed(() => {
@@ -566,26 +584,30 @@ const budgetPaceMessage = computed(() => {
   return 'On track';
 });
 
-// Group all spending by category (including recurring)
+// Group all spending by category (including recurring), net of income in the same category
 const allSpendingByCategory = computed(() => {
   const categoryTotals: Record<Category, { total: number; count: number }> =
     {} as Record<Category, { total: number; count: number }>;
 
-  // Add all monthly expenses
-  monthlyExpenses.value.forEach((transaction) => {
+  nonRecurringExpenses.value.forEach((transaction) => {
     if (!categoryTotals[transaction.category]) {
-      categoryTotals[transaction.category] = {
-        total: 0,
-        count: 0,
-      };
+      categoryTotals[transaction.category] = { total: 0, count: 0 };
     }
     categoryTotals[transaction.category].total += Math.abs(transaction.amount);
     categoryTotals[transaction.category].count += 1;
   });
 
+  // Subtract income in the same category so net cost is shown (e.g., shared housing reimbursements)
+  monthlyIncome.value.forEach((transaction) => {
+    if (categoryTotals[transaction.category]) {
+      categoryTotals[transaction.category].total -= transaction.amount;
+    }
+  });
+
   const total = monthlyExpenseTotal.value;
 
   return Object.entries(categoryTotals)
+    .filter(([, data]) => data.total > 0)
     .map(([category, data]) => ({
       category: category as Category,
       total: data.total,
